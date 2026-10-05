@@ -1,7 +1,8 @@
 """Rebuild the Colab notebooks from the .py sources (stdlib only). Run in the folder holding the files."""
 import json, re
 core = open("turboquant_core.py", encoding="utf-8").read()
-for name in ["llm_kv_cache_demo", "vector_search_demo"]:
+bench = open("provision_bench.py", encoding="utf-8").read()
+for name in ["llm_kv_cache_demo", "vector_search_demo", "provision_search_benchmark"]:
     src = open(f"{name}.py", encoding="utf-8").read()
     cells = []
     for chunk in re.split(r"^# %%", src, flags=re.M)[1:]:
@@ -13,6 +14,8 @@ for name in ["llm_kv_cache_demo", "vector_search_demo"]:
         else:
             if "Needs turboquant_core.py in the same folder" in body:
                 body = "%%writefile turboquant_core.py\n" + core
+            elif "Needs provision_bench.py in the same folder" in body:
+                body = "%%writefile provision_bench.py\n" + bench
             elif body.startswith("# !pip"):
                 body = body.replace("# !pip", "!pip", 1)
             cells.append({"id": f"c{len(cells)}", "cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": body})

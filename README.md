@@ -5,6 +5,8 @@
 | `llm_kv_cache_demo.ipynb` / `.py` | KV-cache compression demo for Google Colab (T4 GPU). Qwen2.5-1.5B-Instruct by default. |
 | `vector_search_demo.ipynb` / `.py` | Vector search benchmark (CPU is fine). DBpedia OpenAI-1536, 100k vectors by default. |
 | `turboquant_core.py` | Pure-PyTorch reference implementation used by both (the notebooks embed it; the `.py` scripts import it from this folder). |
+| `provision_search_benchmark.ipynb` / `.py` + `provision_bench.py` | Separate from the workshop demos: benchmarks our Qdrant provision embeddings (live collection checks, embedding health, compression options incl. TurboQuant, auto-merge stability, labelled evaluation). Colab; read-only against production. |
+| `PROVISION_SEARCH_CHECKS.md` | Instructions to copy into the platform repository with the benchmark: code checks, Qdrant checks, how to run the notebook, how to read results, report template. |
 | `docs/guide/` | Workshop technical guide in English (`TurboQuant_Technical_Guide_EN.md`) and Spanish (`TurboQuant_Guia_Tecnica_ES.md`), with SVG figures. `make_figures.py` regenerates the figures. |
 
 Colab: File > Upload notebook, pick the runtime (T4 for the LLM demo), Runtime > Run all. If the LLM notebook upgrades `transformers` to v5, restart the session once and run again.
