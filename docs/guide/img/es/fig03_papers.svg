@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="1000" height="400" role="img" aria-label="Tres artículos, una idea">
+<title>Tres artículos, una idea</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="400.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">Tres artículos, una idea</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">Aplicar primero una transformación aleatoria, para conocer de antemano la distribución de los datos.</text>
+<line x1="40.0" y1="116.0" x2="960.0" y2="116.0" stroke="#5F6979" stroke-width="2"/>
+<circle cx="48.0" cy="116.0" r="8" fill="#0F1B2D"/>
+<text x="62.0" y="104.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#5F6979" text-anchor="start">Jun 2024 · arXiv 2406.03482</text>
+<rect x="32.0" y="134.0" width="296.0" height="186.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="48.0" y="166.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0F1B2D" text-anchor="start">QJL</text>
+<text x="48.0" y="194.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">Proyección aleatoria y solo el bit de</text>
+<text x="48.0" y="211.6" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">signo. Productos internos insesgados sin</text>
+<text x="48.0" y="229.1" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">sobrecoste. Caché KV a 3 bits, más de 5x</text>
+<text x="48.0" y="246.7" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">menos memoria.</text>
+<circle cx="368.0" cy="116.0" r="8" fill="#0F1B2D"/>
+<text x="382.0" y="104.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#5F6979" text-anchor="start">Feb 2025 · arXiv 2502.02617</text>
+<rect x="352.0" y="134.0" width="296.0" height="186.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="368.0" y="166.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0F1B2D" text-anchor="start">PolarQuant</text>
+<text x="368.0" y="194.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">Precondicionamiento aleatorio y</text>
+<text x="368.0" y="211.6" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">transformación polar recursiva. Los</text>
+<text x="368.0" y="229.1" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">ángulos tienen una distribución</text>
+<text x="368.0" y="246.7" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">conocida, sin escalas. Más de 4,2x de</text>
+<text x="368.0" y="264.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#3A4556" text-anchor="start">compresión.</text>
+<circle cx="688.0" cy="116.0" r="8" fill="#B4521A"/>
+<text x="702.0" y="104.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#5F6979" text-anchor="start">Abr 2025 · arXiv 2504.19874</text>
+<rect x="672.0" y="134.0" width="296.0" height="186.0" rx="10" fill="#0F1B2D"/>
+<text x="688.0" y="166.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#F2A35E" text-anchor="start">TurboQuant</text>
+<text x="688.0" y="194.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#D9DEE6" text-anchor="start">Rotación aleatoria más un cuantizador</text>
+<text x="688.0" y="211.6" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#D9DEE6" text-anchor="start">escalar óptimo por coordenada, y QJL</text>
+<text x="688.0" y="229.1" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#D9DEE6" text-anchor="start">sobre el residuo. Demostrado a menos de</text>
+<text x="688.0" y="246.7" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#D9DEE6" text-anchor="start">2,7x del óptimo.</text>
+<path d="M180,322 C180,362 820,362 820,328" stroke="#B4521A" fill="none" stroke-width="2" stroke-dasharray="6 4"/>
+<polygon points="814,332 820,322 826,332" fill="#B4521A"/>
+<text x="500.0" y="384.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#B4521A" text-anchor="middle">reutiliza QJL como etapa 2</text>
+</svg>

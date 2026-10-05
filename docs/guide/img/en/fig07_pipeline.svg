@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380" width="1000" height="380" role="img" aria-label="TurboQuant_mse, step by step (Algorithm 1)">
+<title>TurboQuant_mse, step by step (Algorithm 1)</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="380.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">TurboQuant_mse, step by step (Algorithm 1)</text>
+<text x="32.0" y="92.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#B4521A" text-anchor="start">Encode (on write)</text>
+<rect x="32.0" y="104.0" width="168.0" height="96.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="46.0" y="128.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Measure length</text>
+<text x="46.0" y="149.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">‖x‖ stored in fp16</text>
+<line x1="203.0" y1="152.0" x2="225.0" y2="152.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="228.0" y="104.0" width="168.0" height="96.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="242.0" y="128.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Normalize</text>
+<text x="242.0" y="149.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">u = x / ‖x‖</text>
+<line x1="399.0" y1="152.0" x2="421.0" y2="152.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="424.0" y="104.0" width="168.0" height="96.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="438.0" y="128.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Rotate</text>
+<text x="438.0" y="149.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">y = Π · u</text>
+<line x1="595.0" y1="152.0" x2="617.0" y2="152.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="620.0" y="104.0" width="168.0" height="96.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="634.0" y="128.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Round</text>
+<text x="634.0" y="149.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">nearest of 2ᵇ</text>
+<text x="634.0" y="166.4" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">centroids, per</text>
+<text x="634.0" y="183.3" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">coordinate</text>
+<line x1="791.0" y1="152.0" x2="813.0" y2="152.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="816.0" y="104.0" width="168.0" height="96.0" rx="10" fill="#0F1B2D"/>
+<text x="830.0" y="128.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">Pack bits</text>
+<text x="830.0" y="149.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">b·d bits + 16</text>
+<text x="32.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#2F6DB5" text-anchor="start">Decode (on read)</text>
+<rect x="32.0" y="248.0" width="215.0" height="80.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="46.0" y="272.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Unpack</text>
+<text x="46.0" y="293.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">codes → centroids</text>
+<line x1="250.0" y1="288.0" x2="277.0" y2="288.0" stroke="#2F6DB5" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="280.0" y="248.0" width="215.0" height="80.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="294.0" y="272.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Rotate back</text>
+<text x="294.0" y="293.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">Πᵀ · ỹ</text>
+<line x1="498.0" y1="288.0" x2="525.0" y2="288.0" stroke="#2F6DB5" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="528.0" y="248.0" width="215.0" height="80.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="542.0" y="272.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Rescale</text>
+<text x="542.0" y="293.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">× ‖x‖</text>
+<line x1="746.0" y1="288.0" x2="773.0" y2="288.0" stroke="#2F6DB5" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="776.0" y="248.0" width="215.0" height="80.0" rx="10" fill="#FBE9DC" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="790.0" y="272.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Approximate vector</text>
+<text x="790.0" y="293.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">x̃ ≈ x</text>
+<text x="32.0" y="360.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5F6979" text-anchor="start" font-style="italic">Π is drawn once from a seed and shared by every vector. The centroids depend only on d and b.</text>
+</svg>

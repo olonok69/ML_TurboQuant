@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 330" width="1000" height="330" role="img" aria-label="Lo que da la compresión: longitud de contexto">
+<title>Lo que da la compresión: longitud de contexto</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="330.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">Lo que da la compresión: longitud de contexto</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">Llama-3.1-8B, 8 GB de memoria de GPU para la caché KV (una GPU de 24 GB tras 16 GB de pesos).</text>
+<text x="32.0" y="118.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#0F1B2D" text-anchor="start">FP16</text>
+<rect x="240.0" y="102.0" width="103.1" height="26.0" rx="4" fill="#C9CED6"/>
+<text x="353.1" y="121.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1B2433" text-anchor="start">65.536 tokens</text>
+<text x="32.0" y="162.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#0F1B2D" text-anchor="start">INT4 + escalas (g=32)</text>
+<rect x="240.0" y="146.0" width="330.0" height="26.0" rx="4" fill="#C9CED6"/>
+<text x="580.0" y="165.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1B2433" text-anchor="start">209.715 tokens</text>
+<text x="32.0" y="206.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F1B2D" text-anchor="start">TurboQuant 4 bits</text>
+<rect x="240.0" y="190.0" width="400.0" height="26.0" rx="4" fill="#B4521A"/>
+<text x="650.0" y="209.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1B2433" text-anchor="start">254.200 tokens</text>
+<text x="32.0" y="250.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F1B2D" text-anchor="start">TurboQuant 3,5 bits</text>
+<rect x="240.0" y="234.0" width="440.0" height="26.0" rx="4" fill="#B4521A"/>
+<text x="690.0" y="253.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1B2433" text-anchor="start">279.620 tokens</text>
+<text x="32.0" y="294.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F1B2D" text-anchor="start">TurboQuant 2,5 bits</text>
+<rect x="240.0" y="278.0" width="600.0" height="26.0" rx="4" fill="#B4521A"/>
+<text x="850.0" y="297.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1B2433" text-anchor="start">381.300 tokens</text>
+</svg>

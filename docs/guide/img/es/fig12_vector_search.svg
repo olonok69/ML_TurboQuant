@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470" role="img" aria-label="Caso de uso 2: búsqueda vectorial y RAG">
+<title>Caso de uso 2: búsqueda vectorial y RAG</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="470.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">Caso de uso 2: búsqueda vectorial y RAG</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">Encontrar los vectores guardados con mayor producto interno (similitud) con una consulta.</text>
+<rect x="32.0" y="96.0" width="150.0" height="70.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="46.0" y="120.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Documentos</text>
+<line x1="186.0" y1="130.0" x2="214.0" y2="130.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="218.0" y="96.0" width="190.0" height="70.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="232.0" y="120.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Modelo de</text>
+<text x="232.0" y="139.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">embeddings</text>
+<line x1="412.0" y1="130.0" x2="440.0" y2="130.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="444.0" y="96.0" width="300.0" height="70.0" rx="10" fill="#0F1B2D"/>
+<text x="458.0" y="120.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">Índice comprimido</text>
+<text x="458.0" y="141.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">códigos TurboQuant, de 8x a 16x más</text>
+<text x="458.0" y="158.4" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">pequeño</text>
+<rect x="32.0" y="222.0" width="150.0" height="104.0" rx="10" fill="#FBE9DC" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="46.0" y="246.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Pregunta</text>
+<line x1="186.0" y1="262.0" x2="214.0" y2="262.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="218.0" y="222.0" width="190.0" height="104.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="232.0" y="246.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Modelo de</text>
+<text x="232.0" y="265.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">embeddings</text>
+<line x1="412.0" y1="262.0" x2="440.0" y2="262.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="444.0" y="222.0" width="170.0" height="104.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="458.0" y="246.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Recorrer códigos</text>
+<text x="458.0" y="267.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">puntuar cada vector,</text>
+<text x="458.0" y="284.4" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">quedarse con 100</text>
+<line x1="560.0" y1="170.0" x2="530.0" y2="218.0" stroke="#0F1B2D" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="618.0" y1="262.0" x2="646.0" y2="262.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="650.0" y="222.0" width="196.0" height="104.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="664.0" y="246.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Re-ranking exacto</text>
+<text x="664.0" y="265.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">(opcional)</text>
+<text x="664.0" y="287.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">re-puntuar 100</text>
+<text x="664.0" y="303.9" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">candidatos con vectores</text>
+<text x="664.0" y="320.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">completos</text>
+<line x1="850.0" y1="262.0" x2="868.0" y2="262.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="872.0" y="222.0" width="100.0" height="104.0" rx="10" fill="#FBE9DC" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="886.0" y="246.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Top 10</text>
+<text x="886.0" y="267.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">al LLM</text>
+<text x="886.0" y="284.4" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#3A4556" text-anchor="start">(RAG)</text>
+<text x="32.0" y="362.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0F1B2D" text-anchor="start">Indexación</text>
+<rect x="32.0" y="374.0" width="940.0" height="40.0" rx="8" fill="#E9E6DD"/>
+<text x="48.0" y="399.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#1B2433" text-anchor="start">Cuantización por producto: primero entrenar k-means (minutos), re-entrenar si los datos cambian</text>
+<rect x="32.0" y="420.0" width="940.0" height="40.0" rx="8" fill="#FBE9DC"/>
+<text x="48.0" y="445.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#B4521A" text-anchor="start">TurboQuant: rotar y redondear (milisegundos), añadir vectores en cuanto llegan</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" width="1000" height="420" role="img" aria-label="El problema de la memoria">
+<title>El problema de la memoria</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="420.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">El problema de la memoria</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">La memoria, no el cómputo, limita el contexto largo y los índices grandes.</text>
+<text x="32.0" y="108.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Llama-3.1-8B en FP16: la caché KV crece con cada token</text>
+<text x="32.0" y="148.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">Pesos del modelo</text>
+<rect x="270.0" y="132.0" width="352.0" height="24.0" rx="4" fill="#C9CED6"/>
+<text x="630.0" y="150.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">16 GB</text>
+<text x="32.0" y="192.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">Caché KV, 8k tokens</text>
+<rect x="270.0" y="176.0" width="22.0" height="24.0" rx="4" fill="#2F6DB5"/>
+<text x="300.0" y="194.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">1 GB</text>
+<text x="32.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">Caché KV, 32k tokens</text>
+<rect x="270.0" y="220.0" width="88.0" height="24.0" rx="4" fill="#2F6DB5"/>
+<text x="366.0" y="238.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">4 GB</text>
+<text x="32.0" y="280.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">Caché KV, 128k tokens</text>
+<rect x="270.0" y="264.0" width="352.0" height="24.0" rx="4" fill="#B4521A"/>
+<text x="630.0" y="282.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">16 GB</text>
+<text x="32.0" y="324.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">128k tokens, TurboQuant 3,5 bits</text>
+<rect x="270.0" y="308.0" width="82.5" height="24.0" rx="4" fill="#3C8C5A"/>
+<text x="360.5" y="326.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">3,75 GB</text>
+<text x="32.0" y="372.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="start">128 KB/token = 32 layers × 8 KV heads × 128 dims × (K+V) × 2 bytes</text>
+<rect x="700.0" y="96.0" width="268.0" height="296.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="716.0" y="124.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#0F1B2D" text-anchor="start">Índice vectorial: 1 millón de</text>
+<text x="716.0" y="142.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#0F1B2D" text-anchor="start">embeddings de OpenAI (1536-d)</text>
+<text x="716.0" y="186.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">float32</text>
+<rect x="716.0" y="196.0" width="236.0" height="30.0" rx="4" fill="#C9CED6"/>
+<text x="716.0" y="250.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#0F1B2D" text-anchor="start">6,1 GB</text>
+<text x="716.0" y="278.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">TurboQuant 4 bits</text>
+<rect x="716.0" y="288.0" width="29.8" height="30.0" rx="4" fill="#B4521A"/>
+<text x="716.0" y="342.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#0F1B2D" text-anchor="start">0,77 GB</text>
+</svg>

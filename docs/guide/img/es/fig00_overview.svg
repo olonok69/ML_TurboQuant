@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 350" width="1000" height="350" role="img" aria-label="TurboQuant en una imagen">
+<title>TurboQuant en una imagen</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="350.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">TurboQuant en una imagen</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">Cada vector pasa por los mismos tres pasos. No se aprende nada de los datos.</text>
+<rect x="32.0" y="92.0" width="198.0" height="222.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="46.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">1. Cualquier vector</text>
+<text x="46.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">Un embedding, una clave o un</text>
+<text x="46.0" y="252.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">valor: cientos de números,</text>
+<text x="46.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">algunos muy grandes (outliers).</text>
+<rect x="52.0" y="183.2" width="9.0" height="2.8" rx="1" fill="#2F6DB5"/>
+<rect x="65.5" y="184.6" width="9.0" height="1.4" rx="1" fill="#2F6DB5"/>
+<rect x="79.0" y="149.6" width="9.0" height="36.4" rx="1" fill="#B4521A"/>
+<rect x="92.5" y="186.0" width="9.0" height="4.2" rx="1" fill="#2F6DB5"/>
+<rect x="106.0" y="183.9" width="9.0" height="2.1" rx="1" fill="#2F6DB5"/>
+<rect x="119.5" y="186.0" width="9.0" height="30.8" rx="1" fill="#B4521A"/>
+<rect x="133.0" y="182.5" width="9.0" height="3.5" rx="1" fill="#2F6DB5"/>
+<rect x="146.5" y="184.6" width="9.0" height="1.4" rx="1" fill="#2F6DB5"/>
+<rect x="160.0" y="186.0" width="9.0" height="2.8" rx="1" fill="#2F6DB5"/>
+<rect x="173.5" y="181.8" width="9.0" height="4.2" rx="1" fill="#2F6DB5"/>
+<rect x="187.0" y="185.3" width="9.0" height="0.7" rx="1" fill="#2F6DB5"/>
+<rect x="200.5" y="159.4" width="9.0" height="26.6" rx="1" fill="#B4521A"/>
+<line x1="46.0" y1="186.0" x2="216.0" y2="186.0" stroke="#5F6979" stroke-width="1"/>
+<line x1="236.0" y1="186.0" x2="272.0" y2="186.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="278.0" y="92.0" width="198.0" height="222.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="292.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">2. Rotación aleatoria</text>
+<text x="292.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">Se gira con una rotación</text>
+<text x="292.0" y="252.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">aleatoria fija. Ahora cada</text>
+<text x="292.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">número sigue la misma curva de</text>
+<text x="292.0" y="284.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">campana conocida.</text>
+<rect x="298.0" y="176.2" width="9.0" height="9.8" rx="1" fill="#2F6DB5"/>
+<rect x="311.5" y="186.0" width="9.0" height="12.6" rx="1" fill="#2F6DB5"/>
+<rect x="325.0" y="180.4" width="9.0" height="5.6" rx="1" fill="#2F6DB5"/>
+<rect x="338.5" y="170.6" width="9.0" height="15.4" rx="1" fill="#2F6DB5"/>
+<rect x="352.0" y="186.0" width="9.0" height="8.4" rx="1" fill="#2F6DB5"/>
+<rect x="365.5" y="173.4" width="9.0" height="12.6" rx="1" fill="#2F6DB5"/>
+<rect x="379.0" y="186.0" width="9.0" height="14.0" rx="1" fill="#2F6DB5"/>
+<rect x="392.5" y="179.0" width="9.0" height="7.0" rx="1" fill="#2F6DB5"/>
+<rect x="406.0" y="186.0" width="9.0" height="5.6" rx="1" fill="#2F6DB5"/>
+<rect x="419.5" y="174.8" width="9.0" height="11.2" rx="1" fill="#2F6DB5"/>
+<rect x="433.0" y="186.0" width="9.0" height="9.8" rx="1" fill="#2F6DB5"/>
+<rect x="446.5" y="177.6" width="9.0" height="8.4" rx="1" fill="#2F6DB5"/>
+<line x1="292.0" y1="186.0" x2="462.0" y2="186.0" stroke="#5F6979" stroke-width="1"/>
+<line x1="482.0" y1="186.0" x2="518.0" y2="186.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="524.0" y="92.0" width="198.0" height="222.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<text x="538.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">3. Redondear con una</text>
+<text x="538.0" y="135.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">regla</text>
+<text x="538.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">Cada número se redondea al más</text>
+<text x="538.0" y="252.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">cercano de 2ᵇ valores fijos,</text>
+<text x="538.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">calculados una sola vez.</text>
+<line x1="545.0" y1="156.0" x2="545.0" y2="202.0" stroke="#B4521A" stroke-width="2"/>
+<text x="545.0" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">00</text>
+<line x1="599.6" y1="156.0" x2="599.6" y2="202.0" stroke="#B4521A" stroke-width="2"/>
+<text x="599.6" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">01</text>
+<line x1="646.4" y1="156.0" x2="646.4" y2="202.0" stroke="#B4521A" stroke-width="2"/>
+<text x="646.4" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">10</text>
+<line x1="701.0" y1="156.0" x2="701.0" y2="202.0" stroke="#B4521A" stroke-width="2"/>
+<text x="701.0" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">11</text>
+<line x1="540.0" y1="180.0" x2="706.0" y2="180.0" stroke="#5F6979" stroke-width="1"/>
+<circle cx="659.4" cy="180.0" r="5" fill="#2F6DB5"/>
+<line x1="728.0" y1="186.0" x2="764.0" y2="186.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="770.0" y="92.0" width="198.0" height="222.0" rx="10" fill="#0F1B2D"/>
+<text x="784.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">4. Guardar pocos bits</text>
+<text x="784.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">b bits por número más una</text>
+<text x="784.0" y="252.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">longitud de 16 bits. 4 bits en</text>
+<text x="784.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">lugar de 16: unas 4 veces</text>
+<text x="784.0" y="284.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">menos.</text>
+<text x="784.0" y="176.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">10 01 11 00 10 …</text>
+<text x="784.0" y="202.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">+ ‖x‖ (16 bit)</text>
+<text x="32.0" y="338.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#5F6979" text-anchor="start" font-style="italic">Etapa 2 opcional (TurboQuant_prod): 1 bit más sobre el error restante para que las similitudes sean insesgadas.</text>
+</svg>

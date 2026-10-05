@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" width="1000" height="420" role="img" aria-label="How close to optimal?">
+<title>How close to optimal?</title>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="0.0" y="0.0" width="1000.0" height="420.0" rx="0" fill="#F6F5F0"/>
+<text x="32.0" y="44.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0F1B2D" text-anchor="start">How close to optimal?</text>
+<text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">MSE for unit vectors (d = 128). Measured with turboquant_core.py against the paper&#x27;s bounds.</text>
+<rect x="110.0" y="100.0" width="530.0" height="260.0" rx="4" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
+<line x1="110.0" y1="360.0" x2="640.0" y2="360.0" stroke="#E2DFD6" stroke-width="1"/>
+<text x="102.0" y="364.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="end">1e-4</text>
+<line x1="110.0" y1="295.0" x2="640.0" y2="295.0" stroke="#E2DFD6" stroke-width="1"/>
+<text x="102.0" y="299.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="end">1e-3</text>
+<line x1="110.0" y1="230.0" x2="640.0" y2="230.0" stroke="#E2DFD6" stroke-width="1"/>
+<text x="102.0" y="234.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="end">1e-2</text>
+<line x1="110.0" y1="165.0" x2="640.0" y2="165.0" stroke="#E2DFD6" stroke-width="1"/>
+<text x="102.0" y="169.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="end">1e-1</text>
+<line x1="110.0" y1="100.0" x2="640.0" y2="100.0" stroke="#E2DFD6" stroke-width="1"/>
+<text x="102.0" y="104.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="end">1</text>
+<text x="110.0" y="380.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="middle">1</text>
+<text x="242.5" y="380.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="middle">2</text>
+<text x="375.0" y="380.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="middle">3</text>
+<text x="507.5" y="380.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="middle">4</text>
+<text x="640.0" y="380.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="middle">5</text>
+<text x="375.0" y="402.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#1B2433" text-anchor="middle">bits per coordinate (b)</text>
+<text x="40" y="230.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1B2433" text-anchor="middle" transform="rotate(-90 40 230.0)">MSE (log scale)</text>
+<path d="M110.0,110.9 L242.5,150.0 L375.0,189.1 L507.5,228.3 L640.0,267.4" stroke="#B4521A" fill="none" stroke-width="2" stroke-dasharray="6 4"/>
+<path d="M110.0,139.1 L242.5,178.3 L375.0,217.4 L507.5,256.5 L640.0,295.7" stroke="#0F1B2D" fill="none" stroke-width="2" stroke-dasharray="2 4"/>
+<path d="M110.0,128.8 L242.5,160.8 L375.0,195.5 L507.5,232.1 L640.0,269.6" stroke="#2F6DB5" fill="none" stroke-width="3"/>
+<circle cx="110.0" cy="128.8" r="5" fill="#2F6DB5"/>
+<circle cx="242.5" cy="160.8" r="5" fill="#2F6DB5"/>
+<circle cx="375.0" cy="195.5" r="5" fill="#2F6DB5"/>
+<circle cx="507.5" cy="232.1" r="5" fill="#2F6DB5"/>
+<circle cx="640.0" cy="269.6" r="5" fill="#2F6DB5"/>
+<line x1="672.0" y1="118.0" x2="702.0" y2="118.0" stroke="#B4521A" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="710.0" y="122.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">upper bound √3π/2 · 4⁻ᵇ (proved for</text>
+<text x="710.0" y="138.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">TurboQuant)</text>
+<line x1="672.0" y1="170.0" x2="702.0" y2="170.0" stroke="#2F6DB5" stroke-width="3"/>
+<text x="710.0" y="174.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">TurboQuant_mse, measured</text>
+<line x1="672.0" y1="202.0" x2="702.0" y2="202.0" stroke="#0F1B2D" stroke-width="2" stroke-dasharray="2 4"/>
+<text x="710.0" y="206.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">lower bound 4⁻ᵇ (no quantizer can do</text>
+<text x="710.0" y="222.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">better)</text>
+<text x="672.0" y="262.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">b</text>
+<text x="732.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">4⁻ᵇ</text>
+<text x="816.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">meas.</text>
+<text x="900.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">paper</text>
+<text x="672.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">1</text>
+<text x="732.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.2500</text>
+<text x="816.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.3603</text>
+<text x="900.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.360</text>
+<text x="672.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">2</text>
+<text x="732.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0625</text>
+<text x="816.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.1159</text>
+<text x="900.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.117</text>
+<text x="672.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">3</text>
+<text x="732.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0156</text>
+<text x="816.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0339</text>
+<text x="900.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.030</text>
+<text x="672.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">4</text>
+<text x="732.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0039</text>
+<text x="816.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0093</text>
+<text x="900.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.009</text>
+<text x="672.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">5</text>
+<text x="732.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0010</text>
+<text x="816.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0025</text>
+<text x="900.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">–</text>
+</svg>
