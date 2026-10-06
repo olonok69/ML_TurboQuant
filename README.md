@@ -8,6 +8,8 @@
 | `provision_search_benchmark.ipynb` / `.py` + `provision_bench.py` | Separate from the workshop demos: benchmarks our Qdrant provision embeddings (live collection checks, embedding health, compression options incl. TurboQuant, auto-merge stability, labelled evaluation). Colab; read-only against production. |
 | `PROVISION_SEARCH_CHECKS.md` | Instructions to copy into the platform repository with the benchmark: code checks, Qdrant checks, how to run the notebook, how to read results, report template. |
 | `docs/guide/` | Workshop technical guide in English (`TurboQuant_Technical_Guide_EN.md`) and Spanish (`TurboQuant_Guia_Tecnica_ES.md`), with SVG figures. `make_figures.py` regenerates the figures. |
+| `docs/guide/Case_Study_Provision_Similarity_EN.md` / `Caso_Estudio_Similitud_Provisiones_ES.md` | Workshop case study: a real check where vector compression does **not** help (edit-distance similarity, Elasticsearch embeddings), with the checklist to run before compressing. |
+| `es_bench/` | The benchmark behind the case study: Elasticsearch instead of Qdrant, fuzz.ratio recall, known-answer canary. See `es_bench/README.md`. |
 
 Colab: File > Upload notebook, pick the runtime (T4 for the LLM demo), Runtime > Run all. If the LLM notebook upgrades `transformers` to v5, restart the session once and run again.
 

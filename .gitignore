@@ -20,3 +20,6 @@ __pycache__/
 .cursor/rules/rules.md
 .claude/
 .cursor/rules/rules.md
+# es_bench: provision data, vectors and results never go into git
+es_bench/results/
+*.npz

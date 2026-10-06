@@ -546,6 +546,7 @@ Exact float32 search ran at 857 QPS.
 * **Outlier splitting needs a calibration sample.** `MixedTurboQuant` picks outlier channels from the prefill. That is light, but it is not strictly data-oblivious.
 * **Beam search and cache cropping** are not supported by the demo's `TurboQuantCache`; use greedy or sampled decoding.
 * **Pending measurements.** LLM quality, needle and speed numbers for Qwen, and the DBpedia-1536 search results, are still to be measured on real hardware (see `HANDOFF.md`).
+* **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. A worked example with real data: [Case study: when vector compression does not help](Case_Study_Provision_Similarity_EN.md).
 
 ---
 
@@ -618,6 +619,7 @@ Exact float32 search ran at 857 QPS.
 | 5.3 Paper results | *Paper results · Vector search* | – |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | both notebooks |
 | 7. Practical guidance | *Practical guidance* | – |
+| Case study (separate chapter) | – | `es_bench/` |
 | 10. References | *References* | – |
 
 ### Suggested workshop agenda (about 90 minutes)
@@ -631,6 +633,7 @@ Exact float32 search ran at 857 QPS.
 | 0:45 | Use case 2: vector search | Guide §5, slides 12 and 13 |
 | 0:50 | Hands-on: run both notebooks | Guide §6, slides 14 to 19 |
 | 1:20 | Practical guidance, limitations, Q&A | Guide §7 and §8, slides 20 and 21 |
+| 1:30 | Optional (+15 min): a case where compression does not help | Case study chapter, `es_bench/` |
 
 ---
 

@@ -546,6 +546,7 @@ La búsqueda exacta en float32 alcanzó 857 QPS.
 * **La división de outliers necesita una muestra de calibración.** `MixedTurboQuant` elige los canales outlier a partir del prefill. Es ligero, pero no es estrictamente independiente de los datos.
 * **Beam search y el recorte de la caché** no están soportados por el `TurboQuantCache` de la demo; usar decodificación voraz o muestreo.
 * **Mediciones pendientes.** Los números de calidad, aguja y velocidad para Qwen, y los resultados de búsqueda con DBpedia-1536, todavía hay que medirlos en hardware real (ver `HANDOFF.md`).
+* **Comprimir no siempre es la palanca.** Si la puntuación del producto no es vectorial, o el coste es el número de elementos guardados o de llamadas a modelos, comprimir vectores no cambia nada. Un ejemplo con datos reales: [Caso de estudio: cuando comprimir vectores no ayuda](Caso_Estudio_Similitud_Provisiones_ES.md).
 
 ---
 
@@ -620,6 +621,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 5.3 Resultados del artículo | *Paper results · Vector search* | – |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | ambos notebooks |
 | 7. Recomendaciones prácticas | *Practical guidance* | – |
+| Caso de estudio (capítulo aparte) | – | `es_bench/` |
 | 10. Referencias | *References* | – |
 
 ### Agenda propuesta para el taller (unos 90 minutos)
@@ -633,6 +635,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 0:45 | Caso de uso 2: búsqueda vectorial | Guía §5, diapositivas 12 y 13 |
 | 0:50 | Práctica: ejecutar los dos notebooks | Guía §6, diapositivas 14 a 19 |
 | 1:20 | Recomendaciones, limitaciones, preguntas | Guía §7 y §8, diapositivas 20 y 21 |
+| 1:30 | Opcional (+15 min): un caso en que comprimir no ayuda | Capítulo del caso de estudio, `es_bench/` |
 
 ---
 
