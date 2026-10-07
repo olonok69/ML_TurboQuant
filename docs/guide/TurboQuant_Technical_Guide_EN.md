@@ -33,7 +33,7 @@ This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebo
 
 TurboQuant (Zandieh, Daliri, Hadian and Mirrokni, arXiv:2504.19874, April 2025) is a **vector quantizer**: an algorithm that maps a vector of real numbers to a short string of bits, and back to an approximation of the original. The authors designed it for two workloads that look different but share the same bottleneck:
 
-* **LLM inference.** While a language model generates text, it keeps a *key-value (KV) cache* with two vectors for every past token, in every layer and every attention head. This cache, not the model's arithmetic, is what limits context length and the number of concurrent users.
+* **LLM inference.** While a language model generates text, it keeps a *key-value (KV) cache* with two vectors for every past token, in every layer and every attention head. This cache, not the model's arithmetic, is what limits context length and the number of concurrent users. Section 1.1 explains the KV cache from scratch.
 * **Vector search.** Vector databases, semantic search and retrieval-augmented generation (RAG) keep millions of embedding vectors in memory and compare a query against all of them.
 
 In both cases what really matters is preserving **inner products** (similarity scores) between vectors. TurboQuant compresses vectors so that their inner products and distances stay accurate, and it does so with three properties that are rarely found together:
@@ -44,7 +44,25 @@ In both cases what really matters is preserving **inner products** (similarity s
 | **Near-optimal** | The paper proves that no quantizer of any kind can do much better: TurboQuant's error is within a factor of about 2.7 of the information-theoretic limit, and within 1.45x at 1 bit. |
 | **Accelerator-friendly** | Encoding is one matrix multiplication plus a table lookup, so it vectorizes well on GPUs and CPUs. |
 
-### 1.1 Why memory is the bottleneck
+### 1.1 Background: how the KV cache works
+
+> **In plain words.** A chatbot writes its answer one word at a time, and before each new word it rereads everything written so far. The KV cache is the model's notebook: it keeps a short summary of every word it has already read, so it never has to reread from scratch. It makes answers fast, but the notebook grows with every word and every user, and that is the memory TurboQuant shrinks.
+
+![How the KV cache works](img/en/fig15_kvcache_basics.svg)
+
+A language model generates text one token (roughly, one word) at a time. To pick the next token, every layer of the model runs **attention**, which works like a lookup:
+
+* the newest token produces a **query** (q): what it is looking for;
+* every earlier token has a **key** (k): a label saying what that token is about;
+* every earlier token also has a **value** (v): the information it hands over.
+
+The query is compared with every key, and the values of the tokens that match best are blended together to decide what comes next.
+
+The figure follows *"The capital of"* as the model writes *"France"*, *"is"* and *"Paris"*. **Without a cache** (left), each step recomputes the keys and values of the whole sentence: 3, then 4, then 5, so the work keeps growing with the length of the text. But the key and value of a token never change once computed. **With a KV cache** (right), the model stores them and, at each step, computes the key and value of the newest token only, then reads the rest from memory: 3, then 1, then 1.
+
+That saved work is why every LLM server uses a KV cache. The cost moves from computation to **memory**: one key and one value per token, in every layer and every attention head, for every conversation being served. The next subsection puts a number on it.
+
+### 1.2 Why memory is the bottleneck
 
 ![The memory problem](img/en/fig01_memory.svg)
 
@@ -56,7 +74,7 @@ of cache. A 128k-token context therefore needs **16 GB**, as much as the model w
 
 **Vector index.** One million OpenAI `text-embedding-3-large` vectors (1536 dimensions, float32) take **6.1 GB**. Product quantization can shrink that, but it must first train codebooks with k-means and retrain them when the data changes. At 4 bits, TurboQuant stores the same index in about **0.77 GB** with no training at all.
 
-### 1.2 Quantization in one minute
+### 1.3 Quantization in one minute
 
 ![Quantization is rounding](img/en/fig02_quantization.svg)
 
@@ -67,7 +85,7 @@ Quantization means **rounding**. Instead of storing a number exactly, you store 
 
 TurboQuant's answer to both questions is the same trick: **rotate the vector randomly first**. After the rotation, every coordinate follows the same known distribution, so the best allowed values can be computed once, in advance, for all data, and there is no per-block scale to store.
 
-### 1.3 Results at a glance
+### 1.4 Results at a glance
 
 | Claim | Source |
 |---|---|
@@ -293,7 +311,7 @@ print(c.nbytes() / 1000)     # 66 bytes per vector instead of 256 in fp16
 
 ### 4.1 What the KV cache is
 
-A transformer layer turns every token into a **query** (q), a **key** (k) and a **value** (v). To produce the next token, attention compares the new query with the keys of all previous tokens (inner products ⟨q, k⟩), turns those scores into weights with a softmax, and mixes the values with those weights. The keys and values of past tokens do not change, so the model caches them: one key and one value vector per token, per layer, per KV head.
+A transformer layer turns every token into a **query** (q), a **key** (k) and a **value** (v). To produce the next token, attention compares the new query with the keys of all previous tokens (inner products ⟨q, k⟩), turns those scores into weights with a softmax, and mixes the values with those weights. The keys and values of past tokens do not change, so the model caches them: one key and one value vector per token, per layer, per KV head. Section 1.1 walks through this step by step.
 
 This is where TurboQuant fits:
 
@@ -606,7 +624,7 @@ Exact float32 search ran at 857 QPS.
 
 | Guide section | Slides (deck order) | Notebook |
 |---|---|---|
-| 1. Introduction | *TurboQuant* (cover), *The problem*, *TurboQuant in one picture* | – |
+| 1. Introduction | *TurboQuant* (cover), *Background · the KV cache*, *The problem*, *TurboQuant in one picture* | – |
 | 2. Three papers | *Three papers, one idea* | – |
 | 3.1 Hidden tax | *The hidden tax* | LLM §2 (INT-b configurations) |
 | 3.2 to 3.4 Rotation and codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vector §3 |
@@ -626,7 +644,7 @@ Exact float32 search ran at 857 QPS.
 
 | Time | Block | Material |
 |---|---|---|
-| 0:00 | Why memory is the bottleneck; TurboQuant in one picture | Guide §1, slides 1 to 3 |
+| 0:00 | How the KV cache works; why memory is the bottleneck; TurboQuant in one picture | Guide §1, slides 1 to 3 |
 | 0:10 | The three papers | Guide §2, slide 4 |
 | 0:15 | How it works: overhead, rotation, codebook, QJL residual, bounds | Guide §3, slides 5 to 8 |
 | 0:35 | Use case 1: KV cache, paper and production results | Guide §4, slides 9 to 11 |
