@@ -34,7 +34,7 @@ Esta guía acompaña a la presentación del taller (*TurboQuant*) y a los dos no
 
 TurboQuant (Zandieh, Daliri, Hadian y Mirrokni, arXiv:2504.19874, abril de 2025) es un **cuantizador vectorial**: un algoritmo que convierte un vector de números reales en una cadena corta de bits, y de vuelta en una aproximación del original. Los autores lo diseñaron para dos cargas de trabajo que parecen distintas pero comparten el mismo cuello de botella:
 
-* **Inferencia de LLM.** Mientras un modelo de lenguaje genera texto, mantiene una *caché clave-valor (KV)* con dos vectores por cada token anterior, en cada capa y en cada cabeza de atención. Esta caché, y no la aritmética del modelo, es lo que limita la longitud del contexto y el número de usuarios simultáneos.
+* **Inferencia de LLM.** Mientras un modelo de lenguaje genera texto, mantiene una *caché clave-valor (KV)* con dos vectores por cada token anterior, en cada capa y en cada cabeza de atención. Esta caché, y no la aritmética del modelo, es lo que limita la longitud del contexto y el número de usuarios simultáneos. El apartado 1.1 explica la caché KV desde cero.
 * **Búsqueda vectorial.** Las bases de datos vectoriales, la búsqueda semántica y la generación aumentada por recuperación (RAG) mantienen millones de embeddings en memoria y comparan cada consulta con todos ellos.
 
 En ambos casos lo que de verdad importa es conservar los **productos internos** (las puntuaciones de similitud) entre vectores. TurboQuant comprime los vectores de forma que sus productos internos y distancias sigan siendo precisos, y lo hace con tres propiedades que rara vez aparecen juntas:
@@ -45,7 +45,25 @@ En ambos casos lo que de verdad importa es conservar los **productos internos** 
 | **Casi óptimo** | El artículo demuestra que ningún cuantizador, de ningún tipo, puede hacerlo mucho mejor: el error de TurboQuant está a menos de unas 2,7 veces del límite teórico de la información, y a 1,45 veces con 1 bit. |
 | **Apto para aceleradores** | Codificar es una multiplicación de matrices y una búsqueda en tabla, así que se vectoriza bien en GPU y CPU. |
 
-### 1.1 Por qué la memoria es el cuello de botella
+### 1.1 Contexto: cómo funciona la caché KV
+
+> **En pocas palabras.** Un chatbot escribe su respuesta palabra a palabra, y antes de cada palabra nueva vuelve a leer todo lo escrito hasta ese momento. La caché KV es el cuaderno del modelo: guarda un resumen breve de cada palabra ya leída, para no tener que releerlo todo desde cero. Hace que las respuestas sean rápidas, pero el cuaderno crece con cada palabra y con cada usuario, y esa es la memoria que TurboQuant reduce.
+
+![Cómo funciona la caché KV](img/es/fig15_kvcache_basics.svg)
+
+Un modelo de lenguaje genera texto token a token (un token es, más o menos, una palabra). Para elegir el siguiente token, cada capa del modelo ejecuta la **atención**, que funciona como una búsqueda:
+
+* el token más reciente produce una **consulta** (q): lo que está buscando;
+* cada token anterior tiene una **clave** (k): una etiqueta que dice de qué trata ese token;
+* cada token anterior tiene también un **valor** (v): la información que aporta.
+
+La consulta se compara con todas las claves, y los valores de los tokens que mejor encajan se combinan para decidir qué viene a continuación.
+
+La figura sigue la frase *"La capital de"* mientras el modelo escribe *"Francia"*, *"es"* y *"París"*. **Sin caché** (izquierda), cada paso recalcula las claves y los valores de toda la frase: 3, luego 4, luego 5, así que el trabajo no deja de crecer con la longitud del texto. Pero la clave y el valor de un token no cambian una vez calculados. **Con caché KV** (derecha), el modelo los guarda y, en cada paso, solo calcula la clave y el valor del token nuevo y lee el resto de la memoria: 3, luego 1, luego 1.
+
+Ese ahorro es la razón por la que todo servidor de LLM usa una caché KV. El coste pasa del cálculo a la **memoria**: una clave y un valor por token, en cada capa y en cada cabeza de atención, para cada conversación que se atiende. El siguiente apartado le pone cifra.
+
+### 1.2 Por qué la memoria es el cuello de botella
 
 ![El problema de la memoria](img/es/fig01_memory.svg)
 
@@ -57,7 +75,7 @@ de caché. Un contexto de 128k tokens necesita por tanto **16 GB**, tanto como l
 
 **Índice vectorial.** Un millón de vectores de OpenAI `text-embedding-3-large` (1536 dimensiones, float32) ocupan **6,1 GB**. La cuantización por producto puede reducirlo, pero antes tiene que entrenar codebooks con k-means y volver a entrenarlos cuando los datos cambian. Con 4 bits, TurboQuant guarda el mismo índice en unos **0,77 GB** sin ningún entrenamiento.
 
-### 1.2 La cuantización en un minuto
+### 1.3 La cuantización en un minuto
 
 ![Cuantizar es redondear](img/es/fig02_quantization.svg)
 
@@ -68,7 +86,7 @@ Cuantizar es **redondear**. En lugar de guardar un número exactamente, se guard
 
 La respuesta de TurboQuant a ambas preguntas es el mismo truco: **rotar primero el vector de forma aleatoria**. Tras la rotación, cada coordenada sigue la misma distribución conocida, así que los mejores valores permitidos se pueden calcular una sola vez, por adelantado, para cualquier dato, y no hay escala por bloque que guardar.
 
-### 1.3 Resultados de un vistazo
+### 1.4 Resultados de un vistazo
 
 | Afirmación | Fuente |
 |---|---|
@@ -294,7 +312,7 @@ print(c.nbytes() / 1000)     # 66 bytes por vector en lugar de 256 en fp16
 
 ### 4.1 Qué es la caché KV
 
-Una capa de transformer convierte cada token en una **consulta** (q), una **clave** (k) y un **valor** (v). Para producir el siguiente token, la atención compara la nueva consulta con las claves de todos los tokens anteriores (productos internos ⟨q, k⟩), convierte esas puntuaciones en pesos con un softmax y mezcla los valores con esos pesos. Las claves y valores de los tokens pasados no cambian, así que el modelo los guarda en caché: un vector clave y un vector valor por token, por capa y por cabeza KV.
+Una capa de transformer convierte cada token en una **consulta** (q), una **clave** (k) y un **valor** (v). Para producir el siguiente token, la atención compara la nueva consulta con las claves de todos los tokens anteriores (productos internos ⟨q, k⟩), convierte esas puntuaciones en pesos con un softmax y mezcla los valores con esos pesos. Las claves y valores de los tokens pasados no cambian, así que el modelo los guarda en caché: un vector clave y un vector valor por token, por capa y por cabeza KV. El apartado 1.1 lo recorre paso a paso.
 
 Aquí es donde encaja TurboQuant:
 
@@ -696,7 +714,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 
 | Sección de la guía | Diapositivas (orden de la presentación) | Notebook |
 |---|---|---|
-| 1. Introducción | *TurboQuant* (portada), *The problem*, *TurboQuant in one picture* | – |
+| 1. Introducción | *TurboQuant* (portada), *Background · the KV cache*, *The problem*, *TurboQuant in one picture* | – |
 | 2. Tres artículos | *Three papers, one idea* | – |
 | 3.1 Impuesto oculto | *The hidden tax* | LLM §2 (configuraciones INT-b) |
 | 3.2 a 3.4 Rotación y codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vectorial §3 |
@@ -717,7 +735,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 
 | Hora | Bloque | Material |
 |---|---|---|
-| 0:00 | Por qué la memoria es el cuello de botella; TurboQuant en una imagen | Guía §1, diapositivas 1 a 3 |
+| 0:00 | Cómo funciona la caché KV; por qué la memoria es el cuello de botella; TurboQuant en una imagen | Guía §1, diapositivas 1 a 3 |
 | 0:10 | Los tres artículos | Guía §2, diapositiva 4 |
 | 0:15 | Cómo funciona: sobrecoste, rotación, codebook, residuo QJL, cotas | Guía §3, diapositivas 5 a 8 |
 | 0:35 | Caso de uso 1: caché KV, resultados del artículo y de producción | Guía §4, diapositivas 9 a 11 |

@@ -219,6 +219,17 @@ T = {
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4-bit", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (no training)", f14_leg2="trained or calibrated baselines",
         f14_build="build time",
+        f15_t="How the KV cache works",
+        f15_s="A model writes one word at a time, and every new word has to look back at all the words before it.",
+        f15_leg_new="K and V computed in this step", f15_leg_old="K and V read from the cache (computed earlier)",
+        f15_no="Without a cache: recompute everything", f15_yes="With a KV cache: compute once, reuse",
+        f15_step="step", f15_words=["The", "capital", "of", "France", "is"], f15_next=["France", "is", "Paris"],
+        f15_no_work="K and V computed: 3 + 4 + 5 = 12, and it keeps growing",
+        f15_yes_work="K and V computed: 3 + 1 + 1 = 5, one per new word",
+        f15_q="Query (q)", f15_qb="What the newest word is looking for. Made fresh at every step, never stored.",
+        f15_k="Key (k)", f15_kb="A label saying what an earlier word is about. Compared with q to decide where to look.",
+        f15_v="Value (v)", f15_vb="The information an earlier word hands over, weighted by how well its key matched.",
+        f15_foot="The price: one K and one V per word, in every layer and head. Llama-3.1-8B: 128 KB per word, 16 GB at 128k words.",
     ),
     "es": dict(
         f00_t="TurboQuant en una imagen",
@@ -319,6 +330,17 @@ T = {
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4 bits", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (sin entrenamiento)", f14_leg2="baselines entrenados o calibrados",
         f14_build="tiempo de construcción",
+        f15_t="Cómo funciona la caché KV",
+        f15_s="Un modelo escribe palabra a palabra, y cada palabra nueva tiene que mirar a todas las anteriores.",
+        f15_leg_new="K y V calculadas en este paso", f15_leg_old="K y V leídas de la caché (calculadas antes)",
+        f15_no="Sin caché: recalcularlo todo", f15_yes="Con caché KV: calcular una vez, reutilizar",
+        f15_step="paso", f15_words=["La", "capital", "de", "Francia", "es"], f15_next=["Francia", "es", "París"],
+        f15_no_work="K y V calculadas: 3 + 4 + 5 = 12, y no deja de crecer",
+        f15_yes_work="K y V calculadas: 3 + 1 + 1 = 5, una por palabra nueva",
+        f15_q="Consulta (q)", f15_qb="Lo que busca la palabra más reciente. Se calcula en cada paso y no se guarda.",
+        f15_k="Clave (k)", f15_kb="Una etiqueta que dice de qué trata una palabra anterior. Se compara con q para decidir dónde mirar.",
+        f15_v="Valor (v)", f15_vb="La información que aporta una palabra anterior, ponderada por lo bien que encajó su clave.",
+        f15_foot="El precio: una K y una V por palabra, en cada capa y cabeza. Llama-3.1-8B: 128 KB por palabra, 16 GB con 128k palabras.",
     ),
 }
 
@@ -766,6 +788,51 @@ def fig14(t, lang):
     return s
 
 
+def fig15(t, lang, deck=False):
+    """How the KV cache works, for readers who have never met it. deck=True drops the title and footer."""
+    top = 24 if deck else 100
+    s = Svg(1000, top + 392 if deck else top + 426, t["f15_t"])
+    if not deck:
+        header(s, t["f15_t"], t["f15_s"])
+    green = "#3C8C5A"
+    s.rect(32, top - 12, 16, 14, ORANGE, rx=2); s.text(56, top, t["f15_leg_new"], 13, INK)
+    s.rect(392, top - 12, 16, 14, BLUE, rx=2); s.text(416, top, t["f15_leg_old"], 13, INK)
+    words = t["f15_words"]
+    for p, (px, ttl, work, cached) in enumerate([(28, t["f15_no"], t["f15_no_work"], False),
+                                                (510, t["f15_yes"], t["f15_yes_work"], True)]):
+        py = top + 16
+        s.rect(px, py, 462, 270, CARD, BORDER)
+        s.text(px + 16, py + 30, ttl, 15.5, NAVY, 600)
+        for r in range(3):
+            ry = py + 50 + r * 62
+            n = 3 + r
+            s.text(px + 16, ry + 28, f"{t['f15_step']} {r + 1}", 12.5, MUTED, 600)
+            for i in range(n):
+                cx = px + 62 + i * 60
+                new = (not cached) or r == 0 or i == n - 1
+                col = ORANGE if new else BLUE
+                s.rect(cx, ry, 54, 20, "#E9E6DD", None, rx=4)
+                s.text(cx + 27, ry + 15, words[i], 11.5, INK, 600, "middle")
+                for k, lbl in enumerate("KV"):
+                    s.rect(cx + k * 28, ry + 24, 26, 22, col, None, rx=4, opacity=0.9)
+                    s.text(cx + k * 28 + 13, ry + 40, lbl, 12, "#FFFFFF", 700, "middle")
+            s.arrow(px + 366, ry + 23, px + 384, ry + 23, MUTED, 1.8)
+            s.rect(px + 388, ry + 9, 62, 28, NAVY, None, rx=6)
+            s.text(px + 419, ry + 28, t["f15_next"][r], 12.5, PEACH, 700, "middle")
+        s.text(px + 16, py + 254, work, 13, ORANGE if not cached else green, 700)
+    cy = top + 300
+    for j, (ttl, body, col) in enumerate([(t["f15_q"], t["f15_qb"], ORANGE), (t["f15_k"], t["f15_kb"], BLUE),
+                                          (t["f15_v"], t["f15_vb"], BLUE)]):
+        bx = 28 + j * 318
+        s.rect(bx, cy, 308, 86, CARD, BORDER)
+        s.rect(bx, cy, 6, 86, col, None, rx=2)
+        s.text(bx + 18, cy + 22, ttl, 14, NAVY, 700)
+        s.lines(bx + 18, cy + 42, body, 12, "#3A4556", width=46)
+    if not deck:
+        s.text(32, cy + 118, t["f15_foot"], 13, MUTED, italic=True)
+    return s
+
+
 def main():
     bias = _bias_data()
     torch.manual_seed(0)
@@ -776,7 +843,8 @@ def main():
             "fig03_papers": fig03(t, lang), "fig04_overhead": fig04(t, lang), "fig05_rotation": fig05(t, lang),
             "fig06_codebook": fig06(t, lang), "fig07_pipeline": fig07(t, lang), "fig08_unbiased": fig08(t, lang, bias),
             "fig10_kvcache": fig10(t, lang), "fig11_outliers": fig11(t, lang), "fig12_vector_search": fig12(t, lang),
-            "fig14_recall": fig14(t, lang),
+            "fig14_recall": fig14(t, lang), "fig15_kvcache_basics": fig15(t, lang),
+            "fig15_kvcache_basics_deck": fig15(t, lang, deck=True),
         }
         torch.manual_seed(0)
         figs["fig09_bounds"], meas = fig09(t, lang)
