@@ -51,7 +51,7 @@ the platform's model and indexed in a local Elasticsearch 8.18 with the platform
 **Question.** If we used cosine neighbours (float32 or compressed) or trigram candidates to choose *which*
 pairs to score, instead of scoring every pair, how many of the real pairs would we find?
 
-**Validation first.** 13 known-answer checks run before any number is trusted (`canary.py`). Examples:
+**Validation first.** 12 known-answer checks run before any number is trusted (`canary.py`). Examples:
 the trigram code matches PostgreSQL's `pg_trgm` to 5·10⁻⁹, an exact Elasticsearch index reproduces
 exact top-k, and the sample loader returns exactly the expected rows. They caught two bugs in the
 benchmark itself before it produced a single result.

@@ -2,9 +2,9 @@
 
 **Near-optimal vector compression for LLM inference and vector search, with no training and no calibration**
 
-This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebooks in this repository (`llm_kv_cache_demo.ipynb` and `vector_search_demo.ipynb`). It follows the same order as the slides: the problem, the three papers, how the technology works, the two use cases, and the demos.
+This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebooks in this repository (`llm_kv_cache_demo.ipynb` and `vector_search_demo.ipynb`). It follows the same order as the slides: the problem, the three papers, how the technology works, the two use cases, the demos, and two real case studies.
 
-> **How to read this guide.** The audience is mixed. Each section opens with a short **In plain words** box written for everyone. The text that follows goes deeper, and the parts marked **Under the hood** are written for engineers and can be skipped without losing the story. Section 9 is a glossary.
+> **How to read this guide.** The audience is mixed. Each section opens with a short **In plain words** box written for everyone. The text that follows goes deeper, and the parts marked **Under the hood** are written for engineers and can be skipped without losing the story. Section 8 tells two real case studies where compression did not help, and section 10 is a glossary.
 
 ---
 
@@ -17,9 +17,10 @@ This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebo
 5. [Use case 2: vector search and RAG](#5-use-case-2-vector-search-and-rag)
 6. [The demos](#6-the-demos)
 7. [Practical guidance](#7-practical-guidance)
-8. [Limitations and open questions](#8-limitations-and-open-questions)
-9. [Glossary](#9-glossary)
-10. [References](#10-references)
+8. [Real case studies: two features where compression did not help](#8-real-case-studies-two-features-where-compression-did-not-help)
+9. [Limitations and open questions](#9-limitations-and-open-questions)
+10. [Glossary](#10-glossary)
+11. [References](#11-references)
 
 [Appendix A: how the guide, slides and notebooks line up](#appendix-a-how-the-guide-slides-and-notebooks-line-up)
 
@@ -538,7 +539,94 @@ Exact float32 search ran at 857 QPS.
 
 ---
 
-## 8. Limitations and open questions
+## 8. Real case studies: two features where compression did not help
+
+> **In plain words.** Sections 4 and 5 show where TurboQuant shines. A workshop also needs the opposite case. We tested TurboQuant, and the built-in int8, binary and BBQ options, on two "find similar" features of a real legal-documents platform. TurboQuant behaved as the paper promises, and in both cases it still did not help, because vector precision was not what limited the feature. The full story, with every table, is in the [case study chapter](Case_Study_Provision_Similarity_EN.md).
+
+All numbers below come from local rebuilds of the two features, run on real platform data (`es_bench/` and `memo_bench/`). They are not measurements of the production system. No client data is in this repository: only aggregate numbers.
+
+### 8.1 The two features
+
+| | A. Similar provisions | B. Suggested responses for comment memos |
+|---|---|---|
+| What the user sees | "Provisions similar to this one, above X %" across a firm's provision database | Past responses to similar questions, while answering a new comment |
+| Score of record | **Edit distance** (`rapidfuzz.fuzz.ratio`, 0–100) on the cleaned text | **Cosine** between `text-embedding-3-large` embeddings (3,072-d) |
+| Where it lives | A precomputed pair matrix in PostgreSQL; stored if ≥ 30, UI default 70 | A Qdrant collection; **exact** search filtered by firm, 50 results, floor 0.5 then 0.42 |
+| Pain | Storage growth and slow writes: each new provision is compared with every other one in the firm | Latency per request |
+| Do vectors matter? | Embeddings (`text-embedding-3-small`, 1,536-d) exist in Elasticsearch, but **no feature reads them** | Yes, they are the search |
+
+**Premise check first.** The first benchmark plan (`provision_search_benchmark.*`, `PROVISION_SEARCH_CHECKS.md`) assumed a Qdrant collection of provision embeddings and a cosine auto-merge threshold of 0.90. Reading the platform code showed that neither exists. Qdrant holds comment memos only, and auto-merge also uses edit distance. The benchmark was rewritten for Elasticsearch (`es_bench/`).
+
+### 8.2 Case A: similar provisions (`es_bench/`)
+
+**Setup.** A local stand-in of the platform's index: 2,501 distinct provision texts, cleaned as the platform cleans them, embedded with the platform's model, in a local Elasticsearch 8.18 with the platform's mapping. Ground truth: exact `fuzz.ratio` of 500 query provisions against all 2,501. Twelve known-answer checks (`canary.py`) run before any number is trusted, for example the trigram code against PostgreSQL's real `pg_trgm`.
+
+**How many pairs are "similar"?** Two unrelated long legal provisions already score about 38, so a low floor keeps almost every pair:
+
+| Stored if fuzz.ratio ≥ | 30 | 40 | 50 | 60 | 70 |
+|---|---|---|---|---|---|
+| Share of all pairs kept | **70 %** | 45 % | **1.6 %** | 0.8 % | 0.7 % |
+
+For a firm of 500,000 provisions that is about 87 billion pairs at a floor of 30, and about 2 billion at 50.
+
+**Does compression change the pairs found?** Compressed cosine neighbours could at most pick *which* pairs to score. Recall of the pairs with fuzz.ratio ≥ 70 among 200 candidates per provision:
+
+| Method | Memory vs float32 | Top-10 overlap with float32 (no rescore → rescore 2×) | Recall of fuzz ≥ 70 pairs @200 |
+|---|---|---|---|
+| float32 | 1× | 1.000 | 99.8 % |
+| scalar int8 | 4× smaller | 0.949 → 0.999 | 99.8 % |
+| binary 1-bit | 32× smaller | 0.824 → 0.962 | 99.7 % |
+| TurboQuant 4-bit | 8× smaller | **0.966 → 1.000** | 99.8 % |
+| TurboQuant 2-bit | 16× smaller | **0.902 → 0.992** | 99.8 % |
+| Trigram neighbours (`pg_trgm`), no vectors | – | – | **100 %** |
+
+TurboQuant keeps the cosine neighbours better than int8 or binary at each bit budget, as the paper promises. The pairs the product scores do not move, because they are near-duplicates that every method finds. Elasticsearch's own options agree: top-10 overlap with exact search is 0.993 for `hnsw`, 0.986 for `int8_hnsw`, 0.950 for `int4_hnsw` (0.996 with rescoring) and 0.878 for `bbq_hnsw` (0.995 with rescoring). Elasticsearch 8.18 already applies `int8_hnsw` by default when a mapping does not choose.
+
+**Verdict A: TurboQuant cannot help.** The score is edit distance, not cosine, and the cost is the number of pairs kept, which no vector technique changes. The levers are the floor (a product decision) and a candidate filter; trigram matching, already in PostgreSQL, does as well as the embeddings.
+
+### 8.3 Case B: comment-memo suggestions (`memo_bench/`)
+
+**Setup.** A local rebuild of the memo path: 1,238 real comments (685 questions, 553 responses), the platform's model, the same Qdrant version, exact search with the firm filter, own thread excluded, 50 results, floors 0.5 then 0.42. Known-answer check first: Qdrant's results equal a numpy exact search on 200 of 200 queries.
+
+**Where the time goes in one suggestion request:**
+
+| Step | Time (p50) |
+|---|---|
+| Embedding the new comment (API call) | ~240 ms |
+| Vector search, 1,238 memos, exact | **~14 ms** |
+| LLM relevance check over the top 12 (a call of similar size, not the platform's own gate) | **~3,800 ms** |
+
+**When would the search matter?** All memos in one firm, the worst case for exact search:
+
+| Memos in the firm | Exact search p50 | Vector RAM, float32 | With Qdrant's built-in int8 |
+|---|---|---|---|
+| 10,000 | 21 ms | 117 MB | 29 MB |
+| 50,000 | 53 ms | 586 MB | 146 MB |
+| 200,000 | 339 ms | 2.3 GB | 0.6 GB (255 ms) |
+
+**Does compression change the suggestions?** Score floor 0.5, pairs from each question's top 50:
+
+| Method | Memory per vector | Top-10 overlap | Suggestions dropped at 0.5 |
+|---|---|---|---|
+| float32 | 12 KB | 1.000 | 0 |
+| scalar int8 (offline) | 3 KB | 0.965 | 1,438 of 22,193 (6.5 %) |
+| **TurboQuant 4-bit** | 1.5 KB | **0.983** | **244 (1.1 %)** |
+| TurboQuant 2-bit | 0.75 KB | 0.945 | 3,574 (16 %) |
+| Qdrant int8 / binary **with rescoring** | – | – | **0** |
+
+**Verdict B: TurboQuant does not help here either.** The vector search is well under 1 % of the request, suggestions are computed in the background, and Qdrant's own quantization with rescoring loses nothing with no new code. What the benchmark did find: two random memos already score 0.38 on average (95th percentile 0.56), so the 0.5 floor lets through about 152 candidates per question. Suggestion quality depends on the re-ranker and the LLM check, not on vector precision.
+
+### 8.4 Checklist: before you compress vectors
+
+1. **Where are the vectors written and read?** If nothing reads them, ask whether to keep paying for them, not how to compress them.
+2. **Is the product's score a vector score?** If it is edit distance, BM25 or a rule, vectors can only pre-filter, and a lexical pre-filter may do as well.
+3. **What dominates the cost?** Count stored items, model calls and round trips. Compression shrinks bytes per vector, not the number of anything.
+4. **Is search exact or approximate?** Exact search on small filtered sets is rarely memory-bound.
+5. **Validate the instruments.** Check every measurement against a known answer before trusting it.
+
+---
+
+## 9. Limitations and open questions
 
 * **The reference implementation is not a kernel.** `turboquant_core.py` dequantizes in PyTorch: it saves memory, but decoding is slower than FP16. Real speedups need fused kernels (vLLM, or community Triton kernels).
 * **Unbiased is not always better.** TurboQuant_prod's QJL stage removes bias but adds variance; at 3 bits and above, and inside a softmax, the MSE variant is usually the better choice.
@@ -546,11 +634,11 @@ Exact float32 search ran at 857 QPS.
 * **Outlier splitting needs a calibration sample.** `MixedTurboQuant` picks outlier channels from the prefill. That is light, but it is not strictly data-oblivious.
 * **Beam search and cache cropping** are not supported by the demo's `TurboQuantCache`; use greedy or sampled decoding.
 * **Pending measurements.** LLM quality, needle and speed numbers for Qwen, and the DBpedia-1536 search results, are still to be measured on real hardware (see `HANDOFF.md`).
-* **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. A worked example with real data: [Case study: when vector compression does not help](Case_Study_Provision_Similarity_EN.md).
+* **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. Two worked examples with real data are in section 8 and the [case study chapter](Case_Study_Provision_Similarity_EN.md).
 
 ---
 
-## 9. Glossary
+## 10. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -589,7 +677,7 @@ Exact float32 search ran at 857 QPS.
 
 ---
 
-## 10. References
+## 11. References
 
 1. A. Zandieh, M. Daliri, M. Hadian, V. Mirrokni. *TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate.* arXiv:2504.19874, 2025. (`docs/2504.19874v1.pdf`)
 2. A. Zandieh, M. Daliri, I. Han. *QJL: 1-Bit Quantized JL Transform for KV Cache Quantization with Zero Overhead.* arXiv:2406.03482, 2024. (`docs/2406.03482v2.pdf`)
@@ -619,8 +707,9 @@ Exact float32 search ran at 857 QPS.
 | 5.3 Paper results | *Paper results · Vector search* | – |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | both notebooks |
 | 7. Practical guidance | *Practical guidance* | – |
-| Case study (separate chapter) | – | `es_bench/` |
-| 10. References | *References* | – |
+| 8. Real case studies | *Case studies · Real data*, *Case A · Similar provisions*, *Case B · Memo suggestions*, *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
+| Case study (separate chapter) | – | `es_bench/`, `memo_bench/` |
+| 11. References | *References* | – |
 
 ### Suggested workshop agenda (about 90 minutes)
 
@@ -632,8 +721,8 @@ Exact float32 search ran at 857 QPS.
 | 0:35 | Use case 1: KV cache, paper and production results | Guide §4, slides 9 to 11 |
 | 0:45 | Use case 2: vector search | Guide §5, slides 12 and 13 |
 | 0:50 | Hands-on: run both notebooks | Guide §6, slides 14 to 19 |
-| 1:20 | Practical guidance, limitations, Q&A | Guide §7 and §8, slides 20 and 21 |
-| 1:30 | Optional (+15 min): a case where compression does not help | Case study chapter, `es_bench/` |
+| 1:20 | Practical guidance, limitations, Q&A | Guide §7 and §9, slides 20 and 21 |
+| 1:30 | Optional (+15 min): two real cases where compression does not help | Guide §8, the four *Case* slides, case study chapter |
 
 ---
 
