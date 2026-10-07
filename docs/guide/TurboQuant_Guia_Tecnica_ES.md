@@ -2,9 +2,9 @@
 
 **Compresión de vectores casi óptima para la inferencia de LLM y la búsqueda vectorial, sin entrenamiento ni calibración**
 
-Esta guía acompaña a la presentación del taller (*TurboQuant*) y a los dos notebooks de Colab de este repositorio (`llm_kv_cache_demo.ipynb` y `vector_search_demo.ipynb`). Sigue el mismo orden que las diapositivas: el problema, los tres artículos, cómo funciona la tecnología, los dos casos de uso y las demos.
+Esta guía acompaña a la presentación del taller (*TurboQuant*) y a los dos notebooks de Colab de este repositorio (`llm_kv_cache_demo.ipynb` y `vector_search_demo.ipynb`). Sigue el mismo orden que las diapositivas: el problema, los tres artículos, cómo funciona la tecnología, los dos casos de uso, las demos y dos casos de estudio reales.
 
-> **Cómo leer esta guía.** El público es mixto. Cada sección empieza con un recuadro **En pocas palabras** pensado para todo el mundo. El texto que sigue entra en detalle, y las partes marcadas **Por dentro** están escritas para perfiles técnicos y se pueden saltar sin perder el hilo. La sección 9 es un glosario.
+> **Cómo leer esta guía.** El público es mixto. Cada sección empieza con un recuadro **En pocas palabras** pensado para todo el mundo. El texto que sigue entra en detalle, y las partes marcadas **Por dentro** están escritas para perfiles técnicos y se pueden saltar sin perder el hilo. La sección 8 cuenta dos casos de estudio reales en los que comprimir no ayudó, y la sección 10 es un glosario.
 
 ---
 
@@ -17,9 +17,10 @@ Esta guía acompaña a la presentación del taller (*TurboQuant*) y a los dos no
 5. [Caso de uso 2: búsqueda vectorial y RAG](#5-caso-de-uso-2-búsqueda-vectorial-y-rag)
 6. [Las demos](#6-las-demos)
 7. [Recomendaciones prácticas](#7-recomendaciones-prácticas)
-8. [Limitaciones y preguntas abiertas](#8-limitaciones-y-preguntas-abiertas)
-9. [Glosario](#9-glosario)
-10. [Referencias](#10-referencias)
+8. [Casos de estudio reales: dos funciones en las que comprimir no ayudó](#8-casos-de-estudio-reales-dos-funciones-en-las-que-comprimir-no-ayudó)
+9. [Limitaciones y preguntas abiertas](#9-limitaciones-y-preguntas-abiertas)
+10. [Glosario](#10-glosario)
+11. [Referencias](#11-referencias)
 
 [Anexo A: correspondencia entre la guía, las diapositivas y los notebooks](#anexo-a-correspondencia-entre-la-guía-las-diapositivas-y-los-notebooks)
 
@@ -556,7 +557,94 @@ La búsqueda exacta en float32 alcanzó 857 QPS.
 
 ---
 
-## 8. Limitaciones y preguntas abiertas
+## 8. Casos de estudio reales: dos funciones en las que comprimir no ayudó
+
+> **En pocas palabras.** Las secciones 4 y 5 muestran dónde brilla TurboQuant. Un taller también necesita el caso contrario. Probamos TurboQuant, y las opciones int8, binaria y BBQ que ya traen las bases de datos, en dos funciones de "buscar similares" de una plataforma real de documentos legales. TurboQuant se comportó como promete el artículo y, aun así, en ninguno de los dos casos ayudó, porque la precisión de los vectores no era lo que limitaba la función. La historia completa, con todas las tablas, está en el [capítulo del caso de estudio](Caso_Estudio_Similitud_Provisiones_ES.md).
+
+Todos los números de esta sección vienen de reconstrucciones locales de las dos funciones, ejecutadas con datos reales de la plataforma (`es_bench/` y `memo_bench/`). No son mediciones del sistema en producción. Este repositorio no contiene datos de clientes: solo números agregados.
+
+### 8.1 Las dos funciones
+
+| | A. Provisiones similares | B. Respuestas sugeridas en memos de comentarios |
+|---|---|---|
+| Qué ve el usuario | "Provisiones similares a esta, por encima del X %" en la base de provisiones de una firma | Respuestas pasadas a preguntas parecidas mientras se responde un comentario nuevo |
+| Puntuación oficial | **Distancia de edición** (`rapidfuzz.fuzz.ratio`, 0–100) sobre el texto limpio | **Coseno** entre embeddings `text-embedding-3-large` (3.072 dimensiones) |
+| Dónde vive | Una matriz de pares precalculada en PostgreSQL; se guarda si ≥ 30, la interfaz usa 70 por defecto | Una colección de Qdrant; búsqueda **exacta** filtrada por firma, 50 resultados, umbral 0,5 y luego 0,42 |
+| Problema | Crecimiento del almacenamiento y escrituras lentas: cada provisión nueva se compara con todas las de la firma | Latencia por petición |
+| ¿Importan los vectores? | Existen embeddings (`text-embedding-3-small`, 1.536 dimensiones) en Elasticsearch, pero **ninguna función los lee** | Sí, son la búsqueda |
+
+**Primero, comprobar la premisa.** El primer plan de benchmark (`provision_search_benchmark.*`, `PROVISION_SEARCH_CHECKS.md`) suponía una colección de Qdrant con embeddings de provisiones y un umbral de coseno de 0,90 para la fusión automática. Al leer el código de la plataforma se vio que no existe ninguna de las dos. Qdrant solo guarda memos de comentarios, y la fusión automática también usa distancia de edición. El benchmark se reescribió para Elasticsearch (`es_bench/`).
+
+### 8.2 Caso A: provisiones similares (`es_bench/`)
+
+**Montaje.** Una réplica local del índice de la plataforma: 2.501 textos de provisiones distintos, limpiados como los limpia la plataforma, con embeddings del mismo modelo, en un Elasticsearch 8.18 local con el mismo mapping. Verdad de referencia: `fuzz.ratio` exacto de 500 provisiones de consulta contra las 2.501. Antes de confiar en ningún número se ejecutan doce comprobaciones con respuesta conocida (`canary.py`), por ejemplo el código de trigramas contra el `pg_trgm` real de PostgreSQL.
+
+**¿Cuántos pares son "similares"?** Dos provisiones legales largas sin relación ya puntúan alrededor de 38, así que un umbral bajo guarda casi todos los pares:
+
+| Se guarda si fuzz.ratio ≥ | 30 | 40 | 50 | 60 | 70 |
+|---|---|---|---|---|---|
+| Porcentaje de pares guardados | **70 %** | 45 % | **1,6 %** | 0,8 % | 0,7 % |
+
+Para una firma con 500.000 provisiones son unos 87.000 millones de pares con umbral 30, y unos 2.000 millones con 50.
+
+**¿Cambia la compresión los pares encontrados?** Los vecinos por coseno comprimidos solo podrían elegir *qué* pares puntuar. Recall de los pares con fuzz.ratio ≥ 70 entre 200 candidatos por provisión:
+
+| Método | Memoria frente a float32 | Coincidencia del top-10 con float32 (sin re-scoring → re-scoring 2×) | Recall de pares fuzz ≥ 70 @200 |
+|---|---|---|---|
+| float32 | 1× | 1,000 | 99,8 % |
+| int8 escalar | 4× menos | 0,949 → 0,999 | 99,8 % |
+| binario 1 bit | 32× menos | 0,824 → 0,962 | 99,7 % |
+| TurboQuant 4 bits | 8× menos | **0,966 → 1,000** | 99,8 % |
+| TurboQuant 2 bits | 16× menos | **0,902 → 0,992** | 99,8 % |
+| Vecinos por trigramas (`pg_trgm`), sin vectores | – | – | **100 %** |
+
+TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada presupuesto de bits, como promete el artículo. Los pares que puntúa el producto no se mueven, porque son casi duplicados que todos los métodos encuentran. Las opciones propias de Elasticsearch coinciden: la coincidencia del top-10 con la búsqueda exacta es 0,993 para `hnsw`, 0,986 para `int8_hnsw`, 0,950 para `int4_hnsw` (0,996 con re-scoring) y 0,878 para `bbq_hnsw` (0,995 con re-scoring). Elasticsearch 8.18 ya aplica `int8_hnsw` por defecto cuando el mapping no elige nada.
+
+**Conclusión A: TurboQuant no puede ayudar.** La puntuación es distancia de edición, no coseno, y el coste es el número de pares guardados, que ninguna técnica vectorial cambia. Las palancas son el umbral (una decisión de producto) y un filtro de candidatos; los trigramas, ya disponibles en PostgreSQL, funcionan tan bien como los embeddings.
+
+### 8.3 Caso B: sugerencias en memos de comentarios (`memo_bench/`)
+
+**Montaje.** Una reconstrucción local del camino de los memos: 1.238 comentarios reales (685 preguntas, 553 respuestas), el modelo de la plataforma, la misma versión de Qdrant, búsqueda exacta con filtro por firma, excluyendo el propio hilo, 50 resultados y umbrales 0,5 y luego 0,42. Primero, una comprobación con respuesta conocida: los resultados de Qdrant coinciden con una búsqueda exacta en numpy en 200 de 200 consultas.
+
+**Dónde se va el tiempo en una petición de sugerencias:**
+
+| Paso | Tiempo (p50) |
+|---|---|
+| Embedding del comentario nuevo (llamada a la API) | ~240 ms |
+| Búsqueda vectorial, 1.238 memos, exacta | **~14 ms** |
+| Comprobación de relevancia con LLM sobre los 12 primeros (una llamada de tamaño similar, no la de la plataforma) | **~3.800 ms** |
+
+**¿Cuándo importaría la búsqueda?** Todos los memos en una sola firma, el peor caso para una búsqueda exacta:
+
+| Memos en la firma | Búsqueda exacta p50 | RAM de vectores, float32 | Con el int8 propio de Qdrant |
+|---|---|---|---|
+| 10.000 | 21 ms | 117 MB | 29 MB |
+| 50.000 | 53 ms | 586 MB | 146 MB |
+| 200.000 | 339 ms | 2,3 GB | 0,6 GB (255 ms) |
+
+**¿Cambia la compresión las sugerencias?** Umbral 0,5, pares del top 50 de cada pregunta:
+
+| Método | Memoria por vector | Coincidencia del top-10 | Sugerencias perdidas en 0,5 |
+|---|---|---|---|
+| float32 | 12 KB | 1,000 | 0 |
+| int8 escalar (offline) | 3 KB | 0,965 | 1.438 de 22.193 (6,5 %) |
+| **TurboQuant 4 bits** | 1,5 KB | **0,983** | **244 (1,1 %)** |
+| TurboQuant 2 bits | 0,75 KB | 0,945 | 3.574 (16 %) |
+| int8 / binario de Qdrant **con re-scoring** | – | – | **0** |
+
+**Conclusión B: TurboQuant tampoco ayuda aquí.** La búsqueda vectorial es mucho menos del 1 % de la petición, las sugerencias se calculan en segundo plano y la cuantización propia de Qdrant con re-scoring no pierde nada sin código nuevo. Lo que sí encontró el benchmark: dos memos al azar ya puntúan 0,38 de media (percentil 95: 0,56), así que el umbral 0,5 deja pasar unos 152 candidatos por pregunta. La calidad de las sugerencias depende del re-ranker y de la comprobación con LLM, no de la precisión de los vectores.
+
+### 8.4 Lista de comprobación: antes de comprimir vectores
+
+1. **¿Dónde se escriben y se leen los vectores?** Si nadie los lee, la pregunta es si seguir pagándolos, no cómo comprimirlos.
+2. **¿La puntuación del producto es vectorial?** Si es distancia de edición, BM25 o una regla, los vectores solo pueden prefiltrar, y un prefiltro léxico puede hacerlo igual de bien.
+3. **¿Qué domina el coste?** Cuenta elementos guardados, llamadas a modelos y viajes de red. La compresión reduce bytes por vector, no el número de nada.
+4. **¿La búsqueda es exacta o aproximada?** La búsqueda exacta sobre conjuntos pequeños filtrados rara vez está limitada por memoria.
+5. **Valida los instrumentos.** Comprueba cada medición con una respuesta conocida antes de confiar en ella.
+
+---
+
+## 9. Limitaciones y preguntas abiertas
 
 * **La implementación de referencia no es un kernel.** `turboquant_core.py` decuantiza en PyTorch: ahorra memoria, pero decodificar es más lento que con FP16. Las aceleraciones reales necesitan kernels fusionados (vLLM o kernels Triton de la comunidad).
 * **Insesgado no siempre es mejor.** La etapa QJL de TurboQuant_prod elimina el sesgo pero añade varianza; a partir de 3 bits, y dentro de un softmax, la variante MSE suele ser la mejor opción.
@@ -564,11 +652,11 @@ La búsqueda exacta en float32 alcanzó 857 QPS.
 * **La división de outliers necesita una muestra de calibración.** `MixedTurboQuant` elige los canales outlier a partir del prefill. Es ligero, pero no es estrictamente independiente de los datos.
 * **Beam search y el recorte de la caché** no están soportados por el `TurboQuantCache` de la demo; usar decodificación voraz o muestreo.
 * **Mediciones pendientes.** Los números de calidad, aguja y velocidad para Qwen, y los resultados de búsqueda con DBpedia-1536, todavía hay que medirlos en hardware real (ver `HANDOFF.md`).
-* **Comprimir no siempre es la palanca.** Si la puntuación del producto no es vectorial, o el coste es el número de elementos guardados o de llamadas a modelos, comprimir vectores no cambia nada. Un ejemplo con datos reales: [Caso de estudio: cuando comprimir vectores no ayuda](Caso_Estudio_Similitud_Provisiones_ES.md).
+* **Comprimir no siempre es la palanca.** Si la puntuación del producto no es vectorial, o el coste es el número de elementos guardados o de llamadas a modelos, comprimir vectores no cambia nada. Dos ejemplos con datos reales están en la sección 8 y en el [capítulo del caso de estudio](Caso_Estudio_Similitud_Provisiones_ES.md).
 
 ---
 
-## 9. Glosario
+## 10. Glosario
 
 | Término | Significado |
 |---|---|
@@ -607,7 +695,7 @@ La búsqueda exacta en float32 alcanzó 857 QPS.
 
 ---
 
-## 10. Referencias
+## 11. Referencias
 
 1. A. Zandieh, M. Daliri, M. Hadian, V. Mirrokni. *TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate.* arXiv:2504.19874, 2025. (`docs/2504.19874v1.pdf`)
 2. A. Zandieh, M. Daliri, I. Han. *QJL: 1-Bit Quantized JL Transform for KV Cache Quantization with Zero Overhead.* arXiv:2406.03482, 2024. (`docs/2406.03482v2.pdf`)
@@ -639,8 +727,9 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 5.3 Resultados del artículo | *Paper results · Vector search* | – |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | ambos notebooks |
 | 7. Recomendaciones prácticas | *Practical guidance* | – |
-| Caso de estudio (capítulo aparte) | – | `es_bench/` |
-| 10. Referencias | *References* | – |
+| 8. Casos de estudio reales | *Case studies · Real data*, *Case A · Similar provisions*, *Case B · Memo suggestions*, *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
+| Caso de estudio (capítulo aparte) | – | `es_bench/`, `memo_bench/` |
+| 11. Referencias | *References* | – |
 
 ### Agenda propuesta para el taller (unos 90 minutos)
 
@@ -652,8 +741,8 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 0:35 | Caso de uso 1: caché KV, resultados del artículo y de producción | Guía §4, diapositivas 9 a 11 |
 | 0:45 | Caso de uso 2: búsqueda vectorial | Guía §5, diapositivas 12 y 13 |
 | 0:50 | Práctica: ejecutar los dos notebooks | Guía §6, diapositivas 14 a 19 |
-| 1:20 | Recomendaciones, limitaciones, preguntas | Guía §7 y §8, diapositivas 20 y 21 |
-| 1:30 | Opcional (+15 min): un caso en que comprimir no ayuda | Capítulo del caso de estudio, `es_bench/` |
+| 1:20 | Recomendaciones, limitaciones, preguntas | Guía §7 y §9, diapositivas 20 y 21 |
+| 1:30 | Opcional (+15 min): dos casos reales en que comprimir no ayuda | Guía §8, las cuatro diapositivas *Case*, capítulo del caso de estudio |
 
 ---
 
