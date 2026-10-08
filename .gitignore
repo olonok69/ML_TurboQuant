@@ -18,7 +18,8 @@ __pycache__/
 .cursor/rules/rules.md
 .cursor/rules/rules.md
 .cursor/rules/rules.md
-.claude/
+.claude/*
+!.claude/settings.json
 .cursor/rules/rules.md
 # es_bench: provision data, vectors and results never go into git
 es_bench/results/
