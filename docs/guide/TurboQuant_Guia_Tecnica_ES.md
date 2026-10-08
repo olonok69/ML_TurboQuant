@@ -228,6 +228,33 @@ TurboQuant simplifica y generaliza los dos trabajos anteriores:
 3. **Cotas inferiores que encajan**: una demostración, con la cota inferior de Shannon y el principio minimax de Yao, de que ningún cuantizador puede bajar de una distorsión de 4⁻ᵇ, así que TurboQuant está a una constante pequeña del óptimo.
 4. **Experimentos** de compresión de caché KV (needle in a haystack, LongBench con Llama-3.1-8B-Instruct y Ministral-7B-Instruct) y de búsqueda de vecinos más cercanos (embeddings OpenAI3 de DBpedia, GloVe).
 
+**Un ejemplo completo, de principio a fin.** El mismo vector y la misma consulta que en los ejemplos de QJL y PolarQuant, `v = [3, −4, 2, 0,5]` y `q = [1, −1, 1, 0]` con puntuación exacta `⟨q, v⟩ = 9`, ahora pasan por TurboQuant_prod con b = 3 bits por coordenada: una etapa MSE de 2 bits más la etapa QJL de 1 bit. Todos los números de abajo salen de `docs/guide/worked_examples.py`. Las secciones 3.2 a 3.5 explican cada paso en detalle.
+
+1. **Norma.** `‖v‖ = √29,25 ≈ 5,41`, que se guarda como un número fp16. El resto trabaja con la dirección `u = v / ‖v‖ = [0,555, −0,740, 0,370, 0,092]`.
+2. **Rotar.** Para que las cuentas quepan en una página, la rotación es una matriz de Hadamard de 4 × 4 con signos aleatorios en las columnas (+, −, +, −), dividida por 2 para que sea ortogonal. Es una rotación aleatoria rápida; `turboquant_core.py` usa en cambio una rotación aleatoria densa obtenida con una descomposición QR.
+
+   ```
+   Π = ½ · [ 1  −1   1  −1 ]
+           [ 1   1   1   1 ]
+           [ 1  −1  −1   1 ]
+           [ 1   1  −1  −1 ]
+   ```
+
+   `Π·v = ½·[3 + 4 + 2 − 0,5, 3 − 4 + 2 + 0,5, 3 + 4 − 2 + 0,5, 3 − 4 − 2 − 0,5] = [4,25, 0,75, 2,75, −1,75]`. Los cuadrados siguen sumando 29,25: la rotación cambia las coordenadas pero no la longitud. Al dividir por ‖v‖ queda `y = [0,786, 0,139, 0,508, −0,324]`.
+3. **Redondear cada coordenada con el codebook fijo.** Con d = 4, cada coordenada rotada de un vector unitario sigue la densidad `(1 − x²)^½` en [−1, 1] (Lema 1 con d = 4). Su codebook de Lloyd-Max de 2 bits es `{−0,674, −0,219, +0,219, +0,674}`, con fronteras en −0,447, 0 y +0,447. Así, 0,786 → +0,674 (índice 3), 0,139 → +0,219 (índice 2), 0,508 → +0,674 (índice 3) y −0,324 → −0,219 (índice 1). Códigos guardados: `11 10 11 01`, 8 bits.
+4. **Decodificar la etapa MSE.** Se rotan de vuelta los centroides y se multiplican por la norma: `x̃_mse = ‖v‖ · Πᵀ·[0,674, 0,219, 0,674, −0,219] = [3,65, −3,65, 1,19, 1,19]`. El error relativo es del 24 % (2 bits en 4 dimensiones es muy poco) y la puntuación es `⟨q, x̃_mse⟩ = 8,48`, por debajo de 9: la etapa MSE encoge el vector, que es el sesgo de la sección 3.5.
+5. **Residuo.** `r = v − x̃_mse = [−0,65, −0,35, 0,81, −0,69]`, con `‖r‖ = 1,29`, que se guarda como un segundo número fp16. La parte de la puntuación que la etapa MSE no capturó es `⟨q, r⟩ = 0,52`.
+6. **QJL sobre el residuo.** TurboQuant usa una matriz gaussiana *S* cuadrada de d × d. Tomemos las tres filas del ejemplo de QJL y supongamos que la cuarta fila que sale es `[0,4, −0,7, −0,3, 0,9]`. Entonces `S·r = [0,47, 0,31, −0,32, −0,87]` y los signos `[+1, +1, −1, −1]` se guardan como los bits `1100`.
+7. **Estimar la puntuación.** La consulta se proyecta con la misma *S* pero nunca se cuantiza: `S·q = [1,5, −0,7, −0,8, 0,8]`, así que `⟨S·q, sign(S·r)⟩ = 1,5 − 0,7 + 0,8 − 0,8 = 0,8`. La corrección es `√(π/2)/4 · 1,29 · 0,8 = 0,32` y la estimación es `8,48 + 0,32 = 8,81`, frente a un valor real de 9.
+
+Lo que queda en memoria: 8 bits de códigos, 4 bits de signo y dos normas fp16 (‖v‖ y ‖r‖), 44 bits en lugar de los 64 bits de cuatro números fp16. Las dos normas pesan tanto solo porque d = 4; con d = 128 y 3 bits un vector ocupa 384 + 32 = 416 bits en lugar de 2.048.
+
+Tres cosas que el ejemplo deja claras:
+
+* **El bit de QJL corrige el encogimiento en promedio.** Sobre 20.000 rotaciones aleatorias (cada una con su propia *S*), la etapa MSE sola da de media 8,32, un 7,5 % por debajo, mientras que la estimación completa da de media 9,00. La dispersión es algo mayor con la corrección (desviación típica de 1,43 frente a 1,29): insesgada, pero más ruidosa, como dice la sección 3.5.
+* **Una extracción no es el promedio.** Para esta rotación, 2.000 extracciones de *S* dan una media de 8,99 con una desviación típica de 1,39. En la práctica d es 128, así que la corrección suma 128 bits de signo y su dispersión es mucho menor.
+* **Nada se ajusta a los datos.** La rotación y *S* salen de semillas, y el codebook solo depende de d y b. Lo único que se guarda por vector son los códigos, los bits de signo y dos normas.
+
 | | QJL | PolarQuant | TurboQuant |
 |---|---|---|---|
 | Transformación aleatoria | Proyección gaussiana | Precondicionamiento aleatorio | Rotación aleatoria |
@@ -324,6 +351,8 @@ La opción `renorm=True` reescala la reconstrucción para que su norma coincida 
 2. Calcular el residuo r = x − x̃_mse. Es pequeño.
 3. Aplicar QJL al residuo: guardar sign(S·r) (1 bit por coordenada) y ‖r‖ (fp16).
 4. Estimar: `⟨y, x̃_mse⟩ + √(π/2)/d · ‖r‖ · ⟨S·y, sign(S·r)⟩`.
+
+La sección 2.3 aplica estos cuatro pasos a un ejemplo de 4 dimensiones con números reales.
 
 El Teorema 2 del artículo demuestra que este estimador es **insesgado** para cualquier y, con un error de producto interno como máximo `√3·π²·‖y‖²/d · 4⁻ᵇ`.
 
@@ -850,10 +879,10 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | Sección de la guía | Diapositivas (orden de la presentación) | Notebook |
 |---|---|---|
 | 1. Introducción | *TurboQuant* (portada), *Background · the KV cache*, *The problem*, *Background · quantization*, *TurboQuant in one picture* | – |
-| 2. Tres artículos | *Three papers, one idea* | – |
+| 2. Tres artículos | *Three papers, one idea*, *QJL · worked example*, *PolarQuant · worked example* | – |
 | 3.1 Impuesto oculto | *The hidden tax* | LLM §2 (configuraciones INT-b) |
 | 3.2 a 3.4 Rotación y codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vectorial §3 |
-| 3.5 TurboQuant_prod | *Stage 2 · TurboQuant_prod* | LLM §1 |
+| 3.5 TurboQuant_prod | *Stage 2 · TurboQuant_prod*, *TurboQuant · worked example* (el ejemplo de la sección 2.3) | LLM §1 |
 | 3.7 Casi óptimo | *Near-optimal* | LLM §1 |
 | 4.1 Caché KV | *Use case 1 · LLM inference* | – |
 | 4.2 Resultados del artículo | *Paper results · KV cache* | – |

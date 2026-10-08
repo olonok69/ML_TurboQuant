@@ -228,6 +228,33 @@ TurboQuant simplifies and generalizes the two earlier works:
 3. **Matching lower bounds**: a proof, using Shannon's lower bound and Yao's minimax principle, that no quantizer can beat 4⁻ᵇ distortion, so TurboQuant is within a small constant of optimal.
 4. **Experiments** on KV-cache compression (needle in a haystack, LongBench with Llama-3.1-8B-Instruct and Ministral-7B-Instruct) and nearest-neighbour search (DBpedia OpenAI3 embeddings, GloVe).
 
+**A worked example, end to end.** The same vector and query as in the QJL and PolarQuant examples, `v = [3, −4, 2, 0.5]` and `q = [1, −1, 1, 0]` with exact score `⟨q, v⟩ = 9`, now run through TurboQuant_prod at b = 3 bits per coordinate: a 2-bit MSE stage plus the 1-bit QJL stage. Every number below comes from `docs/guide/worked_examples.py`. Sections 3.2 to 3.5 explain each step in detail.
+
+1. **Norm.** `‖v‖ = √29.25 ≈ 5.41`, stored as one fp16 number. The rest works on the direction `u = v / ‖v‖ = [0.555, −0.740, 0.370, 0.092]`.
+2. **Rotate.** For arithmetic that fits on a page, the rotation is a 4 × 4 Hadamard matrix with random column signs (+, −, +, −), divided by 2 so that it is orthogonal. This is a fast random rotation; `turboquant_core.py` uses a dense random rotation from a QR decomposition instead.
+
+   ```
+   Π = ½ · [ 1  −1   1  −1 ]
+           [ 1   1   1   1 ]
+           [ 1  −1  −1   1 ]
+           [ 1   1  −1  −1 ]
+   ```
+
+   `Π·v = ½·[3 + 4 + 2 − 0.5, 3 − 4 + 2 + 0.5, 3 + 4 − 2 + 0.5, 3 − 4 − 2 − 0.5] = [4.25, 0.75, 2.75, −1.75]`. The squares still add up to 29.25: the rotation changes the coordinates but not the length. Dividing by ‖v‖ gives `y = [0.786, 0.139, 0.508, −0.324]`.
+3. **Round each coordinate with the fixed codebook.** For d = 4, each rotated coordinate of a unit vector follows the density `(1 − x²)^½` on [−1, 1] (Lemma 1 with d = 4). Its 2-bit Lloyd-Max codebook is `{−0.674, −0.219, +0.219, +0.674}`, with boundaries at −0.447, 0 and +0.447. So 0.786 → +0.674 (index 3), 0.139 → +0.219 (index 2), 0.508 → +0.674 (index 3) and −0.324 → −0.219 (index 1). Stored codes: `11 10 11 01`, 8 bits.
+4. **Decode the MSE stage.** Rotate the centroids back and scale by the norm: `x̃_mse = ‖v‖ · Πᵀ·[0.674, 0.219, 0.674, −0.219] = [3.65, −3.65, 1.19, 1.19]`. The relative error is 24% (2 bits on 4 dimensions is very coarse) and the score is `⟨q, x̃_mse⟩ = 8.48`, below 9: the MSE stage shrinks the vector, which is the bias of section 3.5.
+5. **Residual.** `r = v − x̃_mse = [−0.65, −0.35, 0.81, −0.69]`, with `‖r‖ = 1.29`, stored as a second fp16 number. The part of the score the MSE stage missed is `⟨q, r⟩ = 0.52`.
+6. **QJL on the residual.** TurboQuant uses a square d × d Gaussian matrix *S*. Take the three rows of the QJL example and suppose the fourth row drawn is `[0.4, −0.7, −0.3, 0.9]`. Then `S·r = [0.47, 0.31, −0.32, −0.87]` and the signs `[+1, +1, −1, −1]` are stored as the bits `1100`.
+7. **Estimate the score.** The query is projected with the same *S* but never quantized: `S·q = [1.5, −0.7, −0.8, 0.8]`, so `⟨S·q, sign(S·r)⟩ = 1.5 − 0.7 + 0.8 − 0.8 = 0.8`. The correction is `√(π/2)/4 · 1.29 · 0.8 = 0.32`, and the estimate is `8.48 + 0.32 = 8.81`, against a true value of 9.
+
+What stays in memory: 8 bits of codes, 4 sign bits and two fp16 norms (‖v‖ and ‖r‖), 44 bits instead of the 64 bits of four fp16 numbers. The two norms dominate only because d = 4; at d = 128 and 3 bits a vector takes 384 + 32 = 416 bits instead of 2,048.
+
+Three points the example makes concrete:
+
+* **The QJL bit corrects the shrinkage on average.** Over 20,000 random rotations (each with its own draw of *S*), the MSE stage alone averages 8.32, a 7.5% underestimate, while the full estimate averages 9.00. The spread is slightly larger with the correction (standard deviation 1.43 against 1.29): unbiased, but noisier, as section 3.5 says.
+* **One draw is not the average.** For this rotation, 2,000 draws of *S* give a mean of 8.99 with a standard deviation of 1.39. In real use d is 128, so the correction sums 128 sign bits and its spread is far smaller.
+* **Nothing is fitted to the data.** The rotation and *S* come from seeds, and the codebook depends only on d and b. The only per-vector state is the codes, the sign bits and two norms.
+
 | | QJL | PolarQuant | TurboQuant |
 |---|---|---|---|
 | Random transform | Gaussian projection | Random preconditioning | Random rotation |
@@ -324,6 +351,8 @@ The `renorm=True` option rescales the reconstruction so its norm matches the sto
 2. Compute the residual r = x − x̃_mse. It is small.
 3. Apply QJL to the residual: store sign(S·r) (1 bit per coordinate) and ‖r‖ (fp16).
 4. Estimate: `⟨y, x̃_mse⟩ + √(π/2)/d · ‖r‖ · ⟨S·y, sign(S·r)⟩`.
+
+Section 2.3 runs these four steps on a 4-dimensional example with real numbers.
 
 The paper's Theorem 2 proves this estimator is **unbiased** for any y, with inner-product error at most `√3·π²·‖y‖²/d · 4⁻ᵇ`.
 
@@ -847,10 +876,10 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 | Guide section | Slides (deck order) | Notebook |
 |---|---|---|
 | 1. Introduction | *TurboQuant* (cover), *Background · the KV cache*, *The problem*, *Background · quantization*, *TurboQuant in one picture* | – |
-| 2. Three papers | *Three papers, one idea* | – |
+| 2. Three papers | *Three papers, one idea*, *QJL · worked example*, *PolarQuant · worked example* | – |
 | 3.1 Hidden tax | *The hidden tax* | LLM §2 (INT-b configurations) |
 | 3.2 to 3.4 Rotation and codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vector §3 |
-| 3.5 TurboQuant_prod | *Stage 2 · TurboQuant_prod* | LLM §1 |
+| 3.5 TurboQuant_prod | *Stage 2 · TurboQuant_prod*, *TurboQuant · worked example* (the example of section 2.3) | LLM §1 |
 | 3.7 Near-optimal | *Near-optimal* | LLM §1 |
 | 4.1 KV cache | *Use case 1 · LLM inference* | – |
 | 4.2 Paper results | *Paper results · KV cache* | – |
