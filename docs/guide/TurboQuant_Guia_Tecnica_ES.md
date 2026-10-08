@@ -86,7 +86,29 @@ Cuantizar es **redondear**. En lugar de guardar un número exactamente, se guard
 
 La respuesta de TurboQuant a ambas preguntas es el mismo truco: **rotar primero el vector de forma aleatoria**. Tras la rotación, cada coordenada sigue la misma distribución conocida, así que los mejores valores permitidos se pueden calcular una sola vez, por adelantado, para cualquier dato, y no hay escala por bloque que guardar.
 
-### 1.4 Resultados de un vistazo
+### 1.4 Cómo funciona la cuantización, paso a paso
+
+> **En pocas palabras.** Cuantizar es como poner a cada número un apodo corto. Se acuerdan de antemano unos pocos valores permitidos, se sustituye cada número por el código del más cercano y solo se guardan los códigos. Para recuperar los datos, se cambia cada código por su valor. Se pierde un poco de precisión y se ahorra mucha memoria.
+
+![Cómo funciona la cuantización, paso a paso](img/es/fig16_quant_process.svg)
+
+La figura sigue a ocho números a través de la receta clásica que usan los cuantizadores INT8 e INT4 (cuantización *mín-máx*, o *uniforme*) con 2 bits por número:
+
+1. **Buscar el rango.** Se mira el bloque de números y se anotan el más pequeño (−1,32) y el más grande (1,94).
+2. **Repartir 2ᵇ valores permitidos.** Con 2 bits hay 4 códigos: 00, 01, 10 y 11. Sus valores se reparten por igual en el rango, separados por un *paso*: −1,32, −0,23, 0,85 y 1,94 (paso = 3,26 / 3 = 1,09). Cada código se queda con el tramo de la recta más cercano a su valor.
+3. **Redondear cada número.** Cada número se sustituye por el código del valor permitido más cercano: 0,71 pasa a `10`, −0,43 pasa a `01`, y así con todos. Es el único paso en el que se pierde información.
+4. **Guardar y recuperar.** Se guardan los códigos bien empaquetados (ocho códigos de 2 bits caben en 16 bits), más el mínimo y el paso, que hacen falta para decodificar. Recuperar cuesta una multiplicación y una suma por número: valor = mínimo + código × paso.
+
+La última fila de la tabla es el precio: cada número vuelve un poco desviado, como mucho medio paso (0,44 aquí). Más bits dan más valores permitidos, un paso más pequeño y menos error: cada bit extra divide el paso por dos y el error cuadrático por unas 4.
+
+Dos debilidades de esta receta explican el resto de la guía:
+
+* **El rango es un sobrecoste.** El mínimo y el paso se guardan con 16 bits de precisión en cada bloque. En la figura cuestan 32 bits además de los 16 bits de códigos. Los bloques reales son más grandes, pero con bloques de 32 números el rango sigue añadiendo un bit completo por número (sección 3.1).
+* **Los valores atípicos malgastan los valores permitidos.** Los dos números extremos deciden el rango, así que los valores permitidos quedan muy separados y cinco de los ocho números tienen que compartir solo dos. Las claves y los embeddings reales tienen justo ese tipo de coordenadas atípicas (sección 3.6).
+
+TurboQuant conserva los pasos 3 y 4 y sustituye los pasos 1 y 2. Primero, una rotación aleatoria reparte cada vector por igual entre sus coordenadas, de modo que ningún número destaca y todas las coordenadas siguen la misma campana conocida. Los valores permitidos se calculan una sola vez para esa campana (el codebook de Lloyd-Max, sección 3.3): están más juntos donde los números son frecuentes y son los mismos para cualquier vector, así que no se guarda ningún rango, solo una longitud de 16 bits por vector.
+
+### 1.5 Resultados de un vistazo
 
 | Afirmación | Fuente |
 |---|---|
@@ -387,7 +409,7 @@ Estas cifras salen de la fórmula de la sección 5 del notebook de LLM y coincid
 3. La consulta se convierte en vector con el mismo modelo y el índice devuelve los **top-k** vectores más parecidos.
 4. En **RAG**, esos top-k documentos se pasan a un LLM como contexto.
 
-Para colecciones grandes, el índice tiene que comprimirse para caber en RAM. La herramienta estándar es la **cuantización por producto (PQ)**: dividir cada vector en subvectores y sustituir cada subvector por el más cercano de 256 (o 16) centroides aprendidos con k-means.
+Para colecciones grandes, el índice tiene que comprimirse para caber en RAM. La herramienta estándar es la **cuantización por producto (PQ)**: dividir cada vector en subvectores y sustituir cada subvector por el más cercano de 256 (o 16) centroides aprendidos con k-means. La sección 5.4 explica cómo funciona PQ y cómo se compara con TurboQuant.
 
 ### 5.2 Por qué encaja TurboQuant
 
@@ -407,6 +429,39 @@ Para colecciones grandes, el índice tiene que comprimirse para caber en RAM. La
 | **TurboQuant** | **0,0007** | **0,0013** | **0,0021** |
 
 El **Recall@1@k** (con qué frecuencia el vecino más cercano real está entre los k primeros resultados) superó a PQ y RaBitQ en GloVe (d = 200) y en las entidades de DBpedia con embeddings de OpenAI `text-embedding-3-large` (d = 1536 y d = 3072), tanto a 2 como a 4 bits. Los experimentos usaron 100k vectores de base de datos y 1k consultas (10k en GloVe).
+
+
+### 5.4 Cuantización por producto (PQ), el método con el que se compara TurboQuant
+
+> **En pocas palabras.** La cuantización por producto es la forma clásica de reducir un índice vectorial, y es la referencia con la que se compara TurboQuant en el artículo y en nuestra demo. Corta cada vector en trozos pequeños y guarda, para cada trozo, un diccionario de trozos típicos aprendido de los datos. Cada trozo se guarda como el número de su entrada más parecida del diccionario. Comprime bien, pero los diccionarios hay que aprenderlos con tus datos antes de poder guardar nada, y volver a aprenderlos cuando los datos cambian.
+
+![La cuantización por producto en una imagen](img/es/fig17_pq.svg)
+
+PQ (Jégou, Douze y Schmid, 2011, referencia 9) funciona en cuatro pasos:
+
+1. **Partir.** Cada vector de d números se corta en m subvectores de d/m números. La figura corta 8 números en 4 subvectores de 2.
+2. **Aprender un codebook por subespacio.** Para cada una de las m posiciones se ejecuta k-means sobre los subvectores de una muestra de entrenamiento. Así se obtienen k centroides por subespacio: normalmente k = 256, para que un ID quepa en un byte, o k = 16 (medio byte) en la variante FastScan.
+3. **Codificar.** Cada subvector se sustituye por el ID de su centroide más cercano. Un vector pasa a ser m enteros pequeños: m bytes cuando k = 256.
+4. **Buscar con tablas de consulta.** Para cada consulta se calcula una vez el producto interno (o la distancia) entre cada subvector de la consulta y cada centroide de su subespacio: una tabla de m × k números. La puntuación de cualquier vector guardado es entonces la suma de m lecturas de esa tabla, en las posiciones de sus IDs. La consulta nunca se comprime; a esto se le llama *cálculo asimétrico de distancias*.
+
+El nombre viene de que el conjunto de vectores que PQ puede representar es el *producto* cartesiano de los m codebooks pequeños. Con m = 4 y k = 256 hay 256⁴, unos 4.000 millones, de vectores reconstruidos posibles, descritos con solo 4 × 256 centroides guardados.
+
+**Bits por número.** PQ gasta m × log₂ k bits por vector, así que el presupuesto de bits lo fijan m y k. En la demo a 4 bits por número (384 dimensiones, 8 veces menos que float32), `FAISS PQ LUT256` usa m = 192 subvectores de 2 números con 256 centroides cada uno, 192 bytes por vector, justo la configuración dibujada en la figura. `FAISS PQ-FastScan` llega al mismo presupuesto con m = 384 subvectores de 1 número y 16 centroides cada uno.
+
+**PQ frente a TurboQuant.**
+
+| | Cuantización por producto | TurboQuant |
+|---|---|---|
+| Codebook | Aprendido con k-means sobre tus datos, uno por subespacio | Fijado de antemano e igual para cualquier dato (Lloyd-Max para una campana, sección 3.3) |
+| Qué se redondea | Un grupo de números (un subvector) a la vez | Un número cada vez, tras una rotación aleatoria |
+| Antes de guardar el primer vector | Entrenar: 240 s para 100k vectores de 1536 dimensiones en el artículo; 83 s en nuestra demo | Nada: 0,0013 s para indexar esos mismos 100k vectores en el artículo |
+| Cuando los datos cambian | Volver a entrenar y recodificar el índice | No cambia nada |
+| Recall@1@1 a 4 bits en la demo (sección 6.2) | 0,818 | 0,944 (turbovec) |
+| Puntuar una consulta | Tablas de consulta construidas para cada consulta; muy rápido con FastScan | Rotar la consulta una vez y puntuar contra los centroides (sección 3.4) |
+
+**¿Por qué un codebook fijo gana a uno aprendido?** La ventaja de PQ es que sus centroides siguen a los datos, incluidas las correlaciones entre los números de un mismo subvector. TurboQuant elimina esa necesidad: tras la rotación aleatoria todas las coordenadas siguen la misma distribución conocida y son casi independientes, así que un codebook escalar fijo ya está cerca del óptimo (sección 3.7). Además, PQ reparte sus pocos centroides según la muestra de entrenamiento, que puede alejarse de los datos que se indexan después.
+
+**Cuándo PQ sigue siendo buena opción.** PQ es un método maduro y está disponible casi en todas partes (FAISS `IndexPQ` e `IndexIVFPQ`, Milvus `IVF_PQ`, la cuantización por producto de Qdrant), y puede bajar de 1 bit por número (por ejemplo, un byte para 16 números), algo que no puede hacer un cuantizador que redondea número a número. Para una colección estática que se entrena una vez y casi no cambia, sigue siendo una opción razonable. TurboQuant tiene más ventaja donde los vectores llegan sin parar (una caché KV, un índice vivo) o donde volver a entrenar es caro.
 
 ---
 
@@ -685,7 +740,7 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 | **Divergencia KL** | Lo distintas que son dos distribuciones de probabilidad; aquí, la del siguiente token del modelo comprimido frente a la del modelo FP16. |
 | **Needle in a haystack** | Una prueba que esconde un dato en un documento largo y pide al modelo que lo recupere ("la aguja en el pajar"). |
 | **LongBench** | Un benchmark de tareas de contexto largo (QA, resumen, código y más). |
-| **Cuantización por producto (PQ)** | Un método de compresión de vectores entrenado: dividir los vectores en subvectores y sustituir cada uno por el más cercano de un conjunto de centroides de k-means. |
+| **Cuantización por producto (PQ)** | Un método de compresión de vectores entrenado: dividir los vectores en subvectores y sustituir cada uno por el más cercano de un conjunto de centroides de k-means. Ver la sección 5.4. |
 | **RaBitQ** | Un método de cuantización binaria aleatorizada para búsqueda vectorial; una de las referencias del artículo. |
 | **Recall@1@k** | Fracción de consultas cuyo vecino más cercano real aparece entre los k primeros resultados. |
 | **10@10** | Coincidencia entre el top 10 real y el top 10 devuelto. |
@@ -705,6 +760,7 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 6. turbovec (TurboQuant en Rust + SIMD para búsqueda vectorial): https://github.com/ryancodrai/turbovec
 7. turboquant (kernels Triton e integración con vLLM para GPU RTX 30/40/50): https://github.com/0xsero/turboquant
 8. *TurboQuant vs traditional quantization: eliminating memory overhead in LLMs* (Medium). https://medium.com/@tahirbalarabe2/turboquant-vs-traditional-quantization-eliminating-memory-overhead-in-llms-24524af4adb8
+9. H. Jégou, M. Douze, C. Schmid. *Product Quantization for Nearest Neighbor Search.* IEEE Transactions on Pattern Analysis and Machine Intelligence, 33(1), 2011.
 
 ---
 
@@ -714,7 +770,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 
 | Sección de la guía | Diapositivas (orden de la presentación) | Notebook |
 |---|---|---|
-| 1. Introducción | *TurboQuant* (portada), *Background · the KV cache*, *The problem*, *TurboQuant in one picture* | – |
+| 1. Introducción | *TurboQuant* (portada), *Background · the KV cache*, *The problem*, *Background · quantization*, *TurboQuant in one picture* | – |
 | 2. Tres artículos | *Three papers, one idea* | – |
 | 3.1 Impuesto oculto | *The hidden tax* | LLM §2 (configuraciones INT-b) |
 | 3.2 a 3.4 Rotación y codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vectorial §3 |
@@ -725,6 +781,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 4.3 Producción | *In production* | LLM §6 |
 | 5.1 Búsqueda vectorial | *Use case 2 · Vector search* | – |
 | 5.3 Resultados del artículo | *Paper results · Vector search* | – |
+| 5.4 Cuantización por producto | – (solo en la guía) | vectorial §5 |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | ambos notebooks |
 | 7. Recomendaciones prácticas | *Practical guidance* | – |
 | 8. Casos de estudio reales | *Case studies · Real data*, *Case A · Similar provisions*, *Case B · Memo suggestions*, *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
@@ -735,7 +792,7 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 
 | Hora | Bloque | Material |
 |---|---|---|
-| 0:00 | Cómo funciona la caché KV; por qué la memoria es el cuello de botella; TurboQuant en una imagen | Guía §1, diapositivas 1 a 3 |
+| 0:00 | Cómo funciona la caché KV; por qué la memoria es el cuello de botella; cómo funciona la cuantización; TurboQuant en una imagen | Guía §1, diapositivas 1 a 3 |
 | 0:10 | Los tres artículos | Guía §2, diapositiva 4 |
 | 0:15 | Cómo funciona: sobrecoste, rotación, codebook, residuo QJL, cotas | Guía §3, diapositivas 5 a 8 |
 | 0:35 | Caso de uso 1: caché KV, resultados del artículo y de producción | Guía §4, diapositivas 9 a 11 |
