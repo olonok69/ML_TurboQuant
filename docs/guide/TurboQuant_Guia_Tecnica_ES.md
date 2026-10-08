@@ -44,6 +44,8 @@ En ambos casos lo que de verdad importa es conservar los **productos internos** 
 | **Casi óptimo** | El artículo demuestra que ningún cuantizador, de ningún tipo, puede hacerlo mucho mejor: el error de TurboQuant está a menos de unas 2,7 veces del límite teórico de la información, y a 1,45 veces con 1 bit. |
 | **Apto para aceleradores** | Codificar es una multiplicación de matrices y una búsqueda en tabla, así que se vectoriza bien en GPU y CPU. |
 
+> **Qué significa aquí "casi óptimo".** La teoría de la información pone un suelo: con *b* bits por coordenada, ningún cuantizador, por bueno que sea, puede lograr un error cuadrático medio menor que aproximadamente 1/4ᵇ para vectores unitarios (0,25 con 1 bit, 0,0625 con 2 bits). El artículo demuestra que el error de TurboQuant nunca supera √3·π/2 ≈ 2,7 veces ese suelo. Con 1 bit la distancia es aún menor: TurboQuant da unos 0,36 frente al suelo de 0,25, es decir, 1,45 veces. Por tanto, ni siquiera un cuantizador perfecto inventado en el futuro podría reducir el error más de 2,7 veces, y en la práctica la distancia medida está entre 1,4 y 2,4 veces (ver la tabla de la sección 3.7). Queda poco que ganar buscando un método mejor.
+
 ### 1.1 Por qué la memoria es el cuello de botella
 
 ![El problema de la memoria](img/es/fig01_memory.svg)

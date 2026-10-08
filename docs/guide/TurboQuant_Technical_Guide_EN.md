@@ -44,6 +44,8 @@ In both cases what really matters is preserving **inner products** (similarity s
 | **Near-optimal** | The paper proves that no quantizer of any kind can do much better: TurboQuant's error is within a factor of about 2.7 of the information-theoretic limit, and within 1.45x at 1 bit. |
 | **Accelerator-friendly** | Encoding is one matrix multiplication plus a table lookup, so it vectorizes well on GPUs and CPUs. |
 
+> **What "near-optimal" means here.** Information theory sets a floor: with *b* bits per coordinate, no quantizer, however clever, can get a mean squared error below about 1/4ᵇ for unit vectors (0.25 at 1 bit, 0.0625 at 2 bits). The paper proves that TurboQuant's error is never more than √3·π/2 ≈ 2.7 times that floor. At 1 bit the gap is smaller still: TurboQuant gets about 0.36 against the floor of 0.25, which is 1.45 times. So even a perfect quantizer invented in the future could cut the error by a factor of 2.7 at most, and in practice the measured gap is around 1.4 to 2.4x (see the table in section 3.7). There is little left to gain by searching for a better method.
+
 ### 1.1 Why memory is the bottleneck
 
 ![The memory problem](img/en/fig01_memory.svg)
