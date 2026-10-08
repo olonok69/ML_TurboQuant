@@ -183,11 +183,37 @@ En TurboQuant la misma receta se aplica al residuo `r` que deja la primera etapa
 
 **La idea.** Aplicar un precondicionamiento aleatorio (una rotación) y convertir el vector a **coordenadas polares** con una transformación recursiva: los pares de coordenadas se convierten en un radio y un ángulo, los radios se vuelven a emparejar, y así durante log₂ d niveles (4 niveles en la práctica). Después se cuantizan los ángulos.
 
-**Por qué funciona.** Tras el precondicionamiento aleatorio, los ángulos de cada nivel siguen una distribución muy concentrada cuya forma se puede calcular analíticamente. Como la distribución es conocida, no hace falta normalizar cada bloque, así que no se guardan escalas ni puntos cero. El artículo usa 4 bits para los ángulos del primer nivel (rango de 0 a 2π) y 2 bits para los niveles superiores.
+**Por qué funciona.** Tras el precondicionamiento aleatorio, los ángulos tienen una distribución cuya forma se puede calcular analíticamente (lema 2 del artículo). Los ángulos del primer nivel son uniformes entre 0 y 2π. Los del nivel ℓ ≥ 2 están entre 0 y π/2 con densidad proporcional a sin^(2^(ℓ−1) − 1)(2ψ): centrada en π/4 (45°) y más estrecha en cada nivel. Como la distribución es conocida, no hace falta normalizar cada bloque, así que no se guardan escalas ni puntos cero. El artículo usa 4 bits para los ángulos del primer nivel y 2 bits para los niveles superiores, porque el rango del primer nivel es cuatro veces más ancho.
+
+**Un ejemplo con números pequeños.** Tomemos un vector de 4 dimensiones ya rotado, `v = [3, −4, 2, 0,5]` (las cabezas reales tienen 128 dimensiones). Con d = 4 el árbol tiene log₂ 4 = 2 niveles:
+
+```
+Nivel 2 (raíz):          ‖v‖ = 5,41      ángulo ψ = 22,4°   (rango 0 a 90°)
+                        /          \
+Nivel 1:            R_A = 5      R_B = 2,06
+                    θ₁ = 306,9°  θ₂ = 14,0°                (rango 0 a 360°)
+                    /    \        /    \
+Entrada:          x₁=3  x₂=−4   x₃=2  x₄=0,5
+```
+
+1. **Nivel 1: emparejar las coordenadas.** `(x₁, x₂) = (3, −4)` da un radio `R_A = √(9 + 16) = 5` y un ángulo `θ₁ = atan2(−4, 3) = −53,1°`, que se toma como 306,9° para que quede entre 0 y 360°. `(x₃, x₄) = (2, 0,5)` da `R_B = √4,25 = 2,06` y `θ₂ = atan2(0,5, 2) = 14,0°`.
+2. **Nivel 2: emparejar los radios.** `(R_A, R_B)` da el radio `√(25 + 4,25) = 5,41`, que es la norma del vector completo, y el ángulo `ψ = arctan(R_B / R_A) = 22,4°`. Los dos radios son no negativos, así que ψ siempre está entre 0 y 90°.
+3. **Cuantizar los ángulos.** El nivel 1 usa 4 bits, 16 intervalos de 22,5° con centros en 11,25°, 33,75°, …: θ₁ = 306,9° cae en el intervalo 13 (centro 303,75°) y θ₂ = 14,0° en el intervalo 0 (centro 11,25°). El nivel 2 usa 2 bits. Sus cuatro centroides salen de k-means en 1-D sobre la densidad del nivel 2 (el artículo los construye con k-means++): 17,7°, 36,3°, 53,7° y 72,3°. ψ = 22,4° pasa a 17,7°, índice 0.
+
+Lo que queda en memoria: 4 + 4 + 2 = 10 bits de índices de ángulo más un número flotante (5,41). Los cuatro flotantes originales se descartan.
+
+**La decodificación** recorre el árbol de arriba abajo con cosenos y senos: `R_A ≈ 5,41·cos 17,7° = 5,15`, `R_B ≈ 5,41·sin 17,7° = 1,65`, y después `v̂ = [5,15·cos 303,75°, 5,15·sin 303,75°, 1,65·cos 11,25°, 1,65·sin 11,25°] = [2,86, −4,28, 1,62, 0,32]`. El error relativo es del 9,7 %; con la consulta `q = [1, −1, 1, 0]` la puntuación es 8,76 frente a un valor exacto de 9.
+
+Cuatro puntos que el ejemplo hace concretos:
+
+* **Cuánto se estrechan los niveles superiores.** La densidad del nivel 2 es simplemente sin 2ψ, que es ancha: su desviación típica es 19,6°, frente a 26,0° de un ángulo uniforme en el mismo rango. Baja a 14,2° en el nivel 3 y a 10,1° en el nivel 4. Los centroides de 2 bits lo reflejan: de 17,7° a 72,3° en el nivel 2, de 30,0° a 60,0° en el nivel 4.
+* **Un radio por bloque, no por vector.** En la práctica la recursión se detiene tras L = 4 niveles, así que cada bloque de 16 coordenadas guarda un radio de 16 bits. Un bloque guarda 8 ángulos × 4 bits + 4 × 2 + 2 × 2 + 1 × 2 = 46 bits más el radio: 62 bits para 16 números, es decir, **3,875 bits por coordenada**, unas 4,1 veces menos que con flotantes de 16 bits. Una cabeza de 128 dimensiones tiene 8 radios así. El único estado adicional es el pequeño libro de códigos de centroides, compartido por todos los vectores en lugar de guardarse por bloque. El "más de 4,2x" del resumen es el titular del propio artículo; queda algo por encima de lo que da esta cuenta de 3,875 bits, y en sus pruebas de LongBench el artículo deja en precisión completa los tokens generados.
+* **El libro de códigos se ajusta una vez, no por vector.** La distribución de los ángulos se conoce en teoría, pero el artículo ajusta los centroides con k-means++ en 1-D sobre ángulos observados, ya sea en línea (una vez por prompt y capa, durante el prefill) o fuera de línea (un único libro de códigos para todos los prompts, capas y cabezas). La variante en línea puntúa algo mejor.
+* **Qué aporta la rotación.** Para el análisis el artículo multiplica por una matriz con entradas gaussianas independientes; en la implementación usa una rotación aleatoria compartida por todas las capas, cabezas, claves y valores. Las transformadas de Hadamard aleatorias rápidas cumplen el mismo papel en otros trabajos, pero no son lo que usó PolarQuant. En una prueba con vectores sintéticos de colas pesadas (d = 128, 2.000 vectores, los libros de códigos anteriores), el error cuadrático relativo fue del 3,2 % con la rotación y del 13,6 % sin ella.
 
 **Resultados.** Más de **4,2x** de compresión de la caché KV con las mejores puntuaciones de calidad entre los métodos comparados en pruebas de contexto largo.
 
-**Papel en TurboQuant.** El blog de Google describe la primera etapa de TurboQuant como una compresión "al estilo PolarQuant". En el propio artículo de TurboQuant, esa etapa es la rotación más un cuantizador escalar por coordenada (sección 3), más sencilla, que cumple el mismo papel: hacer que la distribución se conozca de antemano.
+**Papel en TurboQuant.** El blog de Google describe la primera etapa de TurboQuant como una compresión "al estilo PolarQuant". En el propio artículo de TurboQuant, esa etapa conserva el principio de PolarQuant (rotar primero, para que la distribución se conozca de antemano y no hagan falta escalas por bloque), pero prescinde de la transformación polar: cuantiza cada coordenada rotada con un cuantizador escalar de Lloyd-Max (sección 3), que es más sencillo y tiene una cota de distorsión demostrada.
 
 ### 2.3 TurboQuant (abril de 2025)
 
