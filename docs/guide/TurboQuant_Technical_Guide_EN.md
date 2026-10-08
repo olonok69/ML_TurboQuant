@@ -139,6 +139,40 @@ TurboQuant keeps steps 3 and 4 and replaces steps 1 and 2. A random rotation fir
 
 **The estimator.** To compute an attention score ⟨q, k⟩, QJL applies the same random projection to the query *without* quantizing it, and combines it with the stored signs. This *asymmetric* estimator is **unbiased**: on average it gives exactly the right inner product.
 
+**A worked example with small numbers.** Take a 4-dimensional key (real keys have 64 to 128 dimensions per head) and project it to m = 3 bits. Three bits is far too few to be accurate; it only keeps the arithmetic short.
+
+1. **Key and norm.** `k = [3, −4, 2, 0.5]`, so `‖k‖ = √(9 + 16 + 4 + 0.25) = √29.25 ≈ 5.41`. The norm is stored as one float.
+2. **Random Gaussian matrix.** Each entry of *S* (here 3 × 4) is drawn from a standard normal distribution. Suppose the draw is:
+
+   ```
+   S = [  0.5  −0.2   0.8  −0.1 ]
+       [ −0.9   0.1   0.3   0.7 ]
+       [  0.2   0.6  −0.4  −0.5 ]
+   ```
+
+   *S* is not stored either: it is regenerated from a shared random seed whenever it is needed.
+3. **Project.** `S·k`, row by row:
+   * 0.5·3 + (−0.2)·(−4) + 0.8·2 + (−0.1)·0.5 = 1.5 + 0.8 + 1.6 − 0.05 = **3.85**
+   * (−0.9)·3 + 0.1·(−4) + 0.3·2 + 0.7·0.5 = −2.7 − 0.4 + 0.6 + 0.35 = **−2.15**
+   * 0.2·3 + 0.6·(−4) + (−0.4)·2 + (−0.5)·0.5 = 0.6 − 2.4 − 0.8 − 0.25 = **−2.85**
+4. **Keep the signs.** `sign(S·k) = [+1, −1, −1]`, stored as the bits `100` (1 means +1, 0 means −1).
+
+What stays in memory for this key: 3 bits plus one float (5.41). The original four floats are discarded.
+
+**Using the bits.** A query arrives, say `q = [1, −1, 1, 0]`; the exact score is `⟨q, k⟩ = 3 + 4 + 2 + 0 = 9`. The query is projected with the same *S* but **not** quantized: `S·q = [1.5, −0.7, −0.8]`. QJL's estimator is
+
+`⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+
+Here `⟨S·q, sign(S·k)⟩ = 1.5·(+1) + (−0.7)·(−1) + (−0.8)·(−1) = 3.0`, so the estimate is `1.2533 / 3 · 5.41 · 3.0 ≈ 6.78`, against a true value of 9.
+
+Three points the example makes concrete:
+
+* **Why √(π/2).** For a Gaussian row s, the average of `⟨s, q⟩ · sign(⟨s, k⟩)` is `√(2/π) · ⟨q, k⟩ / ‖k‖`. Multiplying by `√(π/2) · ‖k‖` cancels that factor, which is what makes the estimator unbiased. The norm restores the magnitude the signs threw away, and √(π/2) undoes the shrinkage that taking signs causes.
+* **Unbiased does not mean exact.** One draw of *S* gave 6.78. Averaged over 2,000 random draws of *S*, the estimate for this same pair is 9.07 with a standard deviation of 4.4 at m = 3, 0.91 at m = 64, and 0.24 at m = 1,024. The error shrinks like 1/√m, which is why real use projects to as many bits as the head dimension or more.
+* **No XOR or popcount.** Because the query stays in full precision, the score is a sum of the query's projections with signs flipped by the stored bits, not a Hamming distance. XOR plus popcount belongs to the symmetric scheme where both vectors are reduced to signs (SimHash): the fraction of differing bits estimates the angle between them divided by π. That variant is cheaper but adds the query's quantization error, and QJL avoids it on purpose. The bits record the key's direction on the ordinary Euclidean unit sphere; no hyperbolic geometry is involved.
+
+In TurboQuant the same recipe runs on the residual `r` left by the first stage, so the stored norm is `‖r‖` rather than `‖k‖` (section 3.5).
+
 **Results.** A 3-bit KV cache with more than **5x** lower memory and no loss of accuracy, with a CUDA kernel that is faster than the baseline.
 
 **Role in TurboQuant.** QJL becomes TurboQuant's optional second stage: one sign bit per coordinate, applied to the leftover error.

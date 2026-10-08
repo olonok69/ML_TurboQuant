@@ -139,6 +139,40 @@ TurboQuant conserva los pasos 3 y 4 y sustituye los pasos 1 y 2. Primero, una ro
 
 **El estimador.** Para calcular una puntuación de atención ⟨q, k⟩, QJL aplica la misma proyección aleatoria a la consulta *sin* cuantizarla y la combina con los signos guardados. Este estimador *asimétrico* es **insesgado**: en promedio da exactamente el producto interno correcto.
 
+**Un ejemplo con números pequeños.** Tomemos una clave de 4 dimensiones (las claves reales tienen de 64 a 128 dimensiones por cabeza) y proyectémosla a m = 3 bits. Tres bits son demasiado pocos para ser precisos; solo sirven para que las cuentas sean cortas.
+
+1. **Clave y norma.** `k = [3, −4, 2, 0,5]`, así que `‖k‖ = √(9 + 16 + 4 + 0,25) = √29,25 ≈ 5,41`. La norma se guarda como un único número de coma flotante.
+2. **Matriz gaussiana aleatoria.** Cada elemento de *S* (aquí 3 × 4) se extrae de una distribución normal estándar. Supongamos que sale:
+
+   ```
+   S = [  0.5  −0.2   0.8  −0.1 ]
+       [ −0.9   0.1   0.3   0.7 ]
+       [  0.2   0.6  −0.4  −0.5 ]
+   ```
+
+   *S* tampoco se guarda: se regenera a partir de una semilla aleatoria compartida cada vez que hace falta.
+3. **Proyectar.** `S·k`, fila a fila:
+   * 0,5·3 + (−0,2)·(−4) + 0,8·2 + (−0,1)·0,5 = 1,5 + 0,8 + 1,6 − 0,05 = **3,85**
+   * (−0,9)·3 + 0,1·(−4) + 0,3·2 + 0,7·0,5 = −2,7 − 0,4 + 0,6 + 0,35 = **−2,15**
+   * 0,2·3 + 0,6·(−4) + (−0,4)·2 + (−0,5)·0,5 = 0,6 − 2,4 − 0,8 − 0,25 = **−2,85**
+4. **Quedarse con los signos.** `sign(S·k) = [+1, −1, −1]`, que se guarda como los bits `100` (1 significa +1 y 0 significa −1).
+
+Lo que queda en memoria para esta clave: 3 bits más un número de coma flotante (5,41). Los cuatro números originales se descartan.
+
+**Cómo se usan los bits.** Llega una consulta, por ejemplo `q = [1, −1, 1, 0]`; la puntuación exacta es `⟨q, k⟩ = 3 + 4 + 2 + 0 = 9`. La consulta se proyecta con la misma *S* pero **no** se cuantiza: `S·q = [1,5, −0,7, −0,8]`. El estimador de QJL es
+
+`⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+
+Aquí `⟨S·q, sign(S·k)⟩ = 1,5·(+1) + (−0,7)·(−1) + (−0,8)·(−1) = 3,0`, así que la estimación es `1,2533 / 3 · 5,41 · 3,0 ≈ 6,78`, frente a un valor real de 9.
+
+Tres cosas que el ejemplo deja claras:
+
+* **Por qué √(π/2).** Para una fila gaussiana s, el promedio de `⟨s, q⟩ · sign(⟨s, k⟩)` es `√(2/π) · ⟨q, k⟩ / ‖k‖`. Multiplicar por `√(π/2) · ‖k‖` cancela ese factor, y eso es lo que hace al estimador insesgado. La norma devuelve la magnitud que los signos descartaron, y √(π/2) deshace el encogimiento que provoca quedarse con los signos.
+* **Insesgado no significa exacto.** Una sola extracción de *S* dio 6,78. Promediando sobre 2.000 extracciones aleatorias de *S*, la estimación para este mismo par es 9,07 con una desviación típica de 4,4 con m = 3, de 0,91 con m = 64 y de 0,24 con m = 1.024. El error decrece como 1/√m, y por eso en la práctica se proyecta a tantos bits como la dimensión de la cabeza o más.
+* **Sin XOR ni popcount.** Como la consulta se mantiene en precisión completa, la puntuación es una suma de las proyecciones de la consulta con el signo invertido según los bits guardados, no una distancia de Hamming. XOR más popcount corresponde al esquema simétrico en el que ambos vectores se reducen a signos (SimHash): la fracción de bits distintos estima el ángulo entre ellos dividido por π. Esa variante es más barata pero suma el error de cuantizar la consulta, y QJL la evita a propósito. Los bits recogen la dirección de la clave sobre la esfera unidad euclídea habitual; no interviene ninguna geometría hiperbólica.
+
+En TurboQuant la misma receta se aplica al residuo `r` que deja la primera etapa, así que la norma guardada es `‖r‖` y no `‖k‖` (sección 3.5).
+
 **Resultados.** Una caché KV de 3 bits con más de **5x** menos memoria y sin pérdida de precisión, con un kernel CUDA más rápido que la referencia.
 
 **Papel en TurboQuant.** QJL se convierte en la segunda etapa opcional de TurboQuant: un bit de signo por coordenada aplicado al error restante.
