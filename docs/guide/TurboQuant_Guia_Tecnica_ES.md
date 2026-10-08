@@ -121,6 +121,8 @@ TurboQuant conserva los pasos 3 y 4 y sustituye los pasos 1 y 2. Primero, una ro
 | Hasta **8x** más rápido en el cálculo de logits de atención con claves de 4 bits en H100. | Blog de Google Research |
 | De **2,3x a 3,7x** más capacidad de caché KV en vLLM, con un 66 % a 80 % del throughput de BF16. | Blog de vLLM |
 
+Las cifras de LongBench y de la aguja usan escalas distintas: la primera es una puntuación media de tareas sobre 100, la segunda una puntuación de recall entre 0 y 1. La sección 4.2 explica qué mide cada una.
+
 ---
 
 ## 2. Tres artículos, una idea
@@ -420,6 +422,8 @@ A diferencia de KIVI y PolarQuant en la comparación del artículo, TurboQuant t
 
 En Ministral-7B-Instruct, TurboQuant a 2,5 bits obtiene 49,62 frente a 49,89 de la caché completa.
 
+> **Qué es LongBench-E y qué significa la puntuación.** LongBench (Bai et al., THUDM, 2023) es un benchmark de contexto largo con tareas de preguntas y respuestas, resumen, few-shot, tareas sintéticas y completado de código. LongBench-E es su subconjunto equilibrado por longitud: 13 conjuntos de datos en inglés y de código, remuestreados para que haya un número parecido de entradas de 0–4k, 4k–8k y más de 8k tokens. Por eso encaja con los métodos de compresión, cuyo daño puede crecer con la longitud del contexto. Cada tarea se puntúa automáticamente de 0 a 100 con su propia métrica: F1 de solapamiento de palabras con la respuesta de referencia en la mayoría de las tareas de QA, ROUGE-L en los resúmenes, exactitud en clasificación y en las tareas sintéticas, y similitud de edición en código. La **Media** es por tanto una puntuación de calidad media, no un porcentaje de respuestas correctas, y solo tiene sentido junto a la caché completa del mismo modelo. No es la media de las seis columnas por categoría de la Tabla 1 del artículo (saldría unos 48,5), así que presumiblemente es la media sobre los conjuntos de datos individuales, que el artículo no publica. Una media empatada no es un empate en todo: a 3,5 bits TurboQuant queda algo por debajo de la caché completa en QA de un documento (45,01 frente a 45,29) y algo por encima en QA multidocumento (45,31 frente a 45,16). El texto del artículo dice LongBench-E y el pie de la Tabla 1 dice LongBench-V1.
+
 **Needle in a haystack** (Llama-3.1-8B-Instruct, documentos de 4k a 104k tokens, 25 % de la memoria de la caché completa):
 
 | Método | Puntuación |
@@ -433,12 +437,16 @@ En Ministral-7B-Instruct, TurboQuant a 2,5 bits obtiene 49,62 frente a 49,89 de 
 
 Los métodos que descartan tokens (SnapKV, PyramidKV) eliminan los que consideran poco importantes y por eso pierden agujas. La cuantización conserva todos los tokens, solo que con menos bits.
 
+> **Qué es Needle in a Haystack y qué significa la puntuación.** La prueba (Kamradt, 2023), "la aguja en el pajar", esconde una frase, la *aguja*, a una profundidad elegida de un documento largo de relleno, el *pajar*, y pide al modelo que la recupere. El artículo sigue el montaje de Fu et al. (2024): longitudes de documento de 4k a 104k tokens y profundidades de la aguja del 0 % al 100 % del documento, que juntas forman la cuadrícula del mapa de calor de su Figura 4. Cada celda recibe una puntuación de 0 a 1, y la cifra de la tabla es la media de toda la cuadrícula. El artículo la llama puntuación de recall, "lo fielmente que el modelo recupera la frase escondida", sin dar la fórmula. En el código de evaluación que reutilizan la mayoría de los artículos de caché KV (KVCache-Factory, de los autores de PyramidKV), cada respuesta se puntúa por su solapamiento de palabras con la aguja (ROUGE-1), así que una respuesta en parte correcta suma puntos parciales. Hay que leer 0,997 como "las respuestas reprodujeron la aguja casi a la perfección en todas las longitudes y profundidades", no como "el 99,7 % de las pruebas acertó". La condición de memoria importa tanto como la puntuación: todos los métodos comprimidos usaron el 25 % de la caché completa. La Demo 1 puntúa de forma más estricta: una prueba cuenta como acierto solo si el código exacto aparece en la respuesta (sección 6.1).
+
 ### 4.3 En producción
 
 * **Blog de Google Research:** hasta **8x** más rápido en el cálculo de logits de atención con claves TurboQuant de 4 bits frente a claves de 32 bits en H100, y al menos 6x menos memoria KV en tareas de aguja con claves de 3 bits.
 * **vLLM** (0.20.2 y posteriores) incluye kernels fusionados: `--kv-cache-dtype turboquant_4bit_nc`, `turboquant_k8v4`, `turboquant_k3v4_nc`, `turboquant_3bit_nc`. El blog de vLLM informa de **2,3x a 3,7x** más capacidad de caché KV con un **66 % a 80 %** del throughput de BF16. Las variantes agresivas de 3 bits pierden hasta unos 20 puntos en tareas difíciles de matemáticas y código; FP8 sigue siendo la opción neutra en throughput.
 
 El resumen honesto: **la ganancia segura es la capacidad** (contextos más largos, más peticiones simultáneas por GPU). La velocidad depende de tener kernels fusionados, y las configuraciones más agresivas hay que evaluarlas con tus propias tareas.
+
+> **Qué es un kernel fusionado.** Un *kernel* es una función que se ejecuta en la GPU. Sin fusión, una caché comprimida necesita un kernel que desempaqueta los códigos y escribe claves y valores en precisión completa de vuelta en la memoria de la GPU, y después el kernel de atención habitual, que los vuelve a leer. Esa copia descomprimida cuesta tanto tráfico de memoria como una caché sin comprimir, más el desempaquetado, así que decodificar se vuelve más lento. Un kernel *fusionado* hace los dos trabajos en una sola pasada: lee los códigos empaquetados, reconstruye cada clave y valor en los registros del chip y calcula ⟨q, k⟩, el softmax y la suma ponderada de valores sin guardar nunca la caché descomprimida. Con TurboQuant puede incluso no reconstruir las claves: rota la consulta una vez y la puntúa directamente contra los valores del codebook (sección 3.4). Decodificar está limitado por el tráfico de memoria (sección 1.2), así que leer 3 o 4 bits por número en lugar de 16 es de donde sale la aceleración. `turboquant_core.py` no es un kernel fusionado; por eso ahorra memoria pero decodifica más despacio que FP16.
 
 ### 4.4 Lo que da la compresión
 
@@ -797,11 +805,12 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 | **Atención** | La operación del transformer que compara la consulta actual con todas las claves de la caché y mezcla los valores. |
 | **Prefill / decode** | Procesar el prompt de una vez / generar tokens uno a uno. |
 | **Canal outlier** | Una coordenada de las claves o valores con una magnitud mucho mayor que las demás. |
-| **Kernel fusionado** | Una rutina de GPU que hace varios pasos (aquí: desempaquetar y atención) de una vez, sin escribir resultados intermedios en memoria. |
+| **Kernel fusionado** | Una rutina de GPU que hace varios pasos (aquí: desempaquetar y atención) de una vez, sin escribir resultados intermedios en memoria. Ver sección 4.3. |
 | **Perplejidad** | Lo sorprendido que está un modelo de lenguaje ante un texto; cuanto menor, mejor. |
 | **Divergencia KL** | Lo distintas que son dos distribuciones de probabilidad; aquí, la del siguiente token del modelo comprimido frente a la del modelo FP16. |
-| **Needle in a haystack** | Una prueba que esconde un dato en un documento largo y pide al modelo que lo recupere ("la aguja en el pajar"). |
-| **LongBench** | Un benchmark de tareas de contexto largo (QA, resumen, código y más). |
+| **Needle in a haystack** | Una prueba que esconde un dato en un documento largo y pide al modelo que lo recupere ("la aguja en el pajar"). Su puntuación (de 0 a 1) es un recall medio sobre longitudes de documento y profundidades de la aguja. Ver sección 4.2. |
+| **LongBench** | Un benchmark de tareas de contexto largo (QA, resumen, código y más), cada una puntuada de 0 a 100. |
+| **LongBench-E** | El subconjunto de LongBench equilibrado por longitud, con un número parecido de entradas de 0–4k, 4k–8k y más de 8k tokens. Ver sección 4.2. |
 | **Cuantización por producto (PQ)** | Un método de compresión de vectores entrenado: dividir los vectores en subvectores y sustituir cada uno por el más cercano de un conjunto de centroides de k-means. Ver la sección 5.4. |
 | **RaBitQ** | Un método de cuantización binaria aleatorizada para búsqueda vectorial; una de las referencias del artículo. |
 | **Recall@1@k** | Fracción de consultas cuyo vecino más cercano real aparece entre los k primeros resultados. |
