@@ -2,9 +2,9 @@
 
 **Near-optimal vector compression for LLM inference and vector search, with no training and no calibration**
 
-This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebooks in this repository (`llm_kv_cache_demo.ipynb` and `vector_search_demo.ipynb`). It follows the same order as the slides: the problem, the three papers, how the technology works, the two use cases, and the demos.
+This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebooks in this repository (`llm_kv_cache_demo.ipynb` and `vector_search_demo.ipynb`). It follows the same order as the slides: the problem, the three papers, how the technology works, the two use cases, the demos, and two real case studies.
 
-> **How to read this guide.** The audience is mixed. Each section opens with a short **In plain words** box written for everyone. The text that follows goes deeper, and the parts marked **Under the hood** are written for engineers and can be skipped without losing the story. Section 9 is a glossary.
+> **How to read this guide.** The audience is mixed. Each section opens with a short **In plain words** box written for everyone. The text that follows goes deeper, and the parts marked **Under the hood** are written for engineers and can be skipped without losing the story. Section 8 tells two real case studies where compression did not help, and section 10 is a glossary.
 
 ---
 
@@ -17,9 +17,10 @@ This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebo
 5. [Use case 2: vector search and RAG](#5-use-case-2-vector-search-and-rag)
 6. [The demos](#6-the-demos)
 7. [Practical guidance](#7-practical-guidance)
-8. [Limitations and open questions](#8-limitations-and-open-questions)
-9. [Glossary](#9-glossary)
-10. [References](#10-references)
+8. [Real case studies: two features where compression did not help](#8-real-case-studies-two-features-where-compression-did-not-help)
+9. [Limitations and open questions](#9-limitations-and-open-questions)
+10. [Glossary](#10-glossary)
+11. [References](#11-references)
 
 [Appendix A: how the guide, slides and notebooks line up](#appendix-a-how-the-guide-slides-and-notebooks-line-up)
 
@@ -33,7 +34,7 @@ This guide accompanies the workshop deck (*TurboQuant*) and the two Colab notebo
 
 TurboQuant (Zandieh, Daliri, Hadian and Mirrokni, arXiv:2504.19874, April 2025) is a **vector quantizer**: an algorithm that maps a vector of real numbers to a short string of bits, and back to an approximation of the original. The authors designed it for two workloads that look different but share the same bottleneck:
 
-* **LLM inference.** While a language model generates text, it keeps a *key-value (KV) cache* with two vectors for every past token, in every layer and every attention head. This cache, not the model's arithmetic, is what limits context length and the number of concurrent users.
+* **LLM inference.** While a language model generates text, it keeps a *key-value (KV) cache* with two vectors for every past token, in every layer and every attention head. This cache, not the model's arithmetic, is what limits context length and the number of concurrent users. Section 1.1 explains the KV cache from scratch.
 * **Vector search.** Vector databases, semantic search and retrieval-augmented generation (RAG) keep millions of embedding vectors in memory and compare a query against all of them.
 
 In both cases what really matters is preserving **inner products** (similarity scores) between vectors. TurboQuant compresses vectors so that their inner products and distances stay accurate, and it does so with three properties that are rarely found together:
@@ -46,7 +47,25 @@ In both cases what really matters is preserving **inner products** (similarity s
 
 > **What "near-optimal" means here.** Information theory sets a floor: with *b* bits per coordinate, no quantizer, however clever, can get a mean squared error below about 1/4ᵇ for unit vectors (0.25 at 1 bit, 0.0625 at 2 bits). The paper proves that TurboQuant's error is never more than √3·π/2 ≈ 2.7 times that floor. At 1 bit the gap is smaller still: TurboQuant gets about 0.36 against the floor of 0.25, which is 1.45 times. So even a perfect quantizer invented in the future could cut the error by a factor of 2.7 at most, and in practice the measured gap is around 1.4 to 2.4x (see the table in section 3.7). There is little left to gain by searching for a better method.
 
-### 1.1 Why memory is the bottleneck
+### 1.1 Background: how the KV cache works
+
+> **In plain words.** A chatbot writes its answer one word at a time, and before each new word it rereads everything written so far. The KV cache is the model's notebook: it keeps a short summary of every word it has already read, so it never has to reread from scratch. It makes answers fast, but the notebook grows with every word and every user, and that is the memory TurboQuant shrinks.
+
+![How the KV cache works](img/en/fig15_kvcache_basics.svg)
+
+A language model generates text one token (roughly, one word) at a time. To pick the next token, every layer of the model runs **attention**, which works like a lookup:
+
+* the newest token produces a **query** (q): what it is looking for;
+* every earlier token has a **key** (k): a label saying what that token is about;
+* every earlier token also has a **value** (v): the information it hands over.
+
+The query is compared with every key, and the values of the tokens that match best are blended together to decide what comes next.
+
+The figure follows *"The capital of"* as the model writes *"France"*, *"is"* and *"Paris"*. **Without a cache** (left), each step recomputes the keys and values of the whole sentence: 3, then 4, then 5, so the work keeps growing with the length of the text. But the key and value of a token never change once computed. **With a KV cache** (right), the model stores them and, at each step, computes the key and value of the newest token only, then reads the rest from memory: 3, then 1, then 1.
+
+That saved work is why every LLM server uses a KV cache. The cost moves from computation to **memory**: one key and one value per token, in every layer and every attention head, for every conversation being served. The next subsection puts a number on it.
+
+### 1.2 Why memory is the bottleneck
 
 ![The memory problem](img/en/fig01_memory.svg)
 
@@ -58,7 +77,7 @@ of cache. A 128k-token context therefore needs **16 GB**, as much as the model w
 
 **Vector index.** One million OpenAI `text-embedding-3-large` vectors (1536 dimensions, float32) take **6.1 GB**. Product quantization can shrink that, but it must first train codebooks with k-means and retrain them when the data changes. At 4 bits, TurboQuant stores the same index in about **0.77 GB** with no training at all.
 
-### 1.2 Quantization in one minute
+### 1.3 Quantization in one minute
 
 ![Quantization is rounding](img/en/fig02_quantization.svg)
 
@@ -69,7 +88,29 @@ Quantization means **rounding**. Instead of storing a number exactly, you store 
 
 TurboQuant's answer to both questions is the same trick: **rotate the vector randomly first**. After the rotation, every coordinate follows the same known distribution, so the best allowed values can be computed once, in advance, for all data, and there is no per-block scale to store.
 
-### 1.3 Results at a glance
+### 1.4 How quantization works, step by step
+
+> **In plain words.** Quantizing is like giving every number a short nickname. You agree in advance on a few allowed values, replace each number with the code of the closest one, and store only the codes. To read the data back, you swap each code for its value. You lose a little precision and save a lot of memory.
+
+![How quantization works, step by step](img/en/fig16_quant_process.svg)
+
+The figure follows eight numbers through the classic recipe used by INT8 and INT4 quantizers (*min-max*, or *uniform*, quantization) at 2 bits per number:
+
+1. **Find the range.** Look at the block of numbers and note the smallest (−1.32) and the largest (1.94).
+2. **Lay out 2ᵇ allowed values.** With 2 bits there are 4 codes: 00, 01, 10 and 11. Their values are spread evenly over the range, one *step* apart: −1.32, −0.23, 0.85 and 1.94 (step = 3.26 / 3 = 1.09). Each code owns the stretch of the line that is closest to its value.
+3. **Round each number.** Replace every number with the code of the nearest allowed value: 0.71 becomes `10`, −0.43 becomes `01`, and so on. This is the only step that loses information.
+4. **Store, then read back.** Store the codes packed tightly (eight 2-bit codes fit in 16 bits), plus the minimum and the step, which are needed to decode. Reading back is one multiply-add per number: value = minimum + code × step.
+
+The last row of the table is the price: each number comes back slightly off, by at most half a step (0.44 here). More bits give more allowed values, a smaller step and a smaller error: every extra bit halves the step and cuts the squared error by about 4x.
+
+Two weaknesses of this recipe explain the rest of the guide:
+
+* **The range is overhead.** The minimum and the step are stored in 16-bit precision for every block. In the figure they cost 32 bits on top of 16 bits of codes. Real blocks are larger, but with blocks of 32 numbers the range still adds a full bit per number (section 3.1).
+* **Outliers waste the allowed values.** The two extreme numbers decide the range, so the allowed values are spread thinly and five of the eight numbers have to share just two of them. Real keys and embeddings have exactly such outlier coordinates (section 3.6).
+
+TurboQuant keeps steps 3 and 4 and replaces steps 1 and 2. A random rotation first spreads each vector evenly over its coordinates, so no number sticks out and every coordinate follows the same known bell curve. The allowed values are computed once for that bell curve (the Lloyd-Max codebook, section 3.3): they sit closer together where numbers are common, and they are the same for every vector, so no range is stored, only one 16-bit length per vector.
+
+### 1.5 Results at a glance
 
 | Claim | Source |
 |---|---|
@@ -295,7 +336,7 @@ print(c.nbytes() / 1000)     # 66 bytes per vector instead of 256 in fp16
 
 ### 4.1 What the KV cache is
 
-A transformer layer turns every token into a **query** (q), a **key** (k) and a **value** (v). To produce the next token, attention compares the new query with the keys of all previous tokens (inner products ⟨q, k⟩), turns those scores into weights with a softmax, and mixes the values with those weights. The keys and values of past tokens do not change, so the model caches them: one key and one value vector per token, per layer, per KV head.
+A transformer layer turns every token into a **query** (q), a **key** (k) and a **value** (v). To produce the next token, attention compares the new query with the keys of all previous tokens (inner products ⟨q, k⟩), turns those scores into weights with a softmax, and mixes the values with those weights. The keys and values of past tokens do not change, so the model caches them: one key and one value vector per token, per layer, per KV head. Section 1.1 walks through this step by step.
 
 This is where TurboQuant fits:
 
@@ -370,7 +411,7 @@ These figures come from the formula in section 5 of the LLM notebook and match t
 3. A query is embedded with the same model and the index returns the **top-k** most similar vectors.
 4. In **RAG**, those top-k documents are passed to an LLM as context.
 
-For large collections the index must be compressed to fit in RAM. The standard tool is **product quantization (PQ)**: split each vector into sub-vectors and replace each sub-vector with the nearest of 256 (or 16) centroids learned with k-means.
+For large collections the index must be compressed to fit in RAM. The standard tool is **product quantization (PQ)**: split each vector into sub-vectors and replace each sub-vector with the nearest of 256 (or 16) centroids learned with k-means. Section 5.4 explains how PQ works and how it compares with TurboQuant.
 
 ### 5.2 Why TurboQuant fits
 
@@ -390,6 +431,38 @@ For large collections the index must be compressed to fit in RAM. The standard t
 | **TurboQuant** | **0.0007** | **0.0013** | **0.0021** |
 
 **Recall@1@k** (how often the true nearest neighbour is among the top k returned) beat PQ and RaBitQ on GloVe (d = 200) and on DBpedia entities embedded with OpenAI `text-embedding-3-large` (d = 1536 and d = 3072), at both 2 and 4 bits. The experiments used 100k database vectors and 1k queries (10k for GloVe).
+
+### 5.4 Product quantization (PQ), the method TurboQuant is compared with
+
+> **In plain words.** Product quantization is the classic way to shrink a vector index, and it is the baseline in the TurboQuant paper and in our demo. It cuts every vector into small pieces and keeps, for each piece, a phrase book of typical pieces learned from the data. Each piece is stored as the number of its closest phrase-book entry. It compresses well, but the phrase books have to be learned from your data before anything can be stored, and relearned when the data changes.
+
+![Product quantization in one picture](img/en/fig17_pq.svg)
+
+PQ (Jégou, Douze and Schmid, 2011, reference 9) works in four steps:
+
+1. **Split.** Cut each vector of d numbers into m sub-vectors of d/m numbers. The figure cuts 8 numbers into 4 sub-vectors of 2.
+2. **Learn a codebook for each sub-space.** For each of the m positions, run k-means on the sub-vectors of a training sample. This gives k centroids per sub-space: usually k = 256, so that an ID fits in one byte, or k = 16 (half a byte) in the FastScan variant.
+3. **Encode.** Replace each sub-vector with the ID of its nearest centroid. A vector becomes m small integers: m bytes when k = 256.
+4. **Search with lookup tables.** For each query, compute once the inner product (or distance) between every query sub-vector and every centroid of its sub-space: a table of m × k numbers. The score of any stored vector is then m table lookups added up, read at its IDs. The query itself is never compressed; this is called *asymmetric distance computation*.
+
+The name comes from the fact that the set of vectors PQ can represent is the Cartesian *product* of the m small codebooks. With m = 4 and k = 256 there are 256⁴, about 4 billion, possible reconstructed vectors, described by only 4 × 256 stored centroids.
+
+**Bits per number.** PQ spends m × log₂ k bits per vector, so the bit budget is set by m and k. In the demo at 4 bits per number (384 dimensions, 8x smaller than float32), `FAISS PQ LUT256` uses m = 192 sub-vectors of 2 numbers with 256 centroids each, 192 bytes per vector, exactly the setting drawn in the figure. `FAISS PQ-FastScan` reaches the same budget with m = 384 sub-vectors of 1 number and 16 centroids each.
+
+**PQ versus TurboQuant.**
+
+| | Product quantization | TurboQuant |
+|---|---|---|
+| Codebook | Learned with k-means on your data, one per sub-space | Fixed in advance and the same for all data (Lloyd-Max for a bell curve, section 3.3) |
+| What is rounded | A group of numbers (a sub-vector) at once | One number at a time, after a random rotation |
+| Before the first vector is stored | Training: 240 s for 100k vectors of 1536 dimensions in the paper; 83 s in our demo | Nothing: 0.0013 s to index the same 100k vectors in the paper |
+| When the data drifts | Retrain and re-encode the index | Nothing changes |
+| Recall@1@1 at 4 bits in the demo (section 6.2) | 0.818 | 0.944 (turbovec) |
+| Scoring a query | Lookup tables built per query; very fast with FastScan | Rotate the query once, score against centroid values (section 3.4) |
+
+**Why does a fixed codebook beat a learned one?** PQ's advantage is that its centroids follow the data, including correlations between the numbers inside a sub-vector. TurboQuant removes the need for that: after the random rotation every coordinate follows the same known distribution and the coordinates are nearly independent, so a fixed scalar codebook is already close to optimal (section 3.7). PQ also spends its few centroids on the training sample, which can drift away from the data indexed later.
+
+**When PQ is still a good choice.** PQ is mature and available almost everywhere (FAISS `IndexPQ` and `IndexIVFPQ`, Milvus `IVF_PQ`, Qdrant product quantization), and it can go below 1 bit per number (for example one byte for 16 numbers), which a quantizer that rounds one number at a time cannot. For a static collection that is trained once and rarely changes, it remains a reasonable default. The case for TurboQuant is strongest where vectors arrive continuously (a KV cache, a live index) or where retraining is costly.
 
 ---
 
@@ -540,7 +613,94 @@ Exact float32 search ran at 857 QPS.
 
 ---
 
-## 8. Limitations and open questions
+## 8. Real case studies: two features where compression did not help
+
+> **In plain words.** Sections 4 and 5 show where TurboQuant shines. A workshop also needs the opposite case. We tested TurboQuant, and the built-in int8, binary and BBQ options, on two "find similar" features of a real legal-documents platform. TurboQuant behaved as the paper promises, and in both cases it still did not help, because vector precision was not what limited the feature. The full story, with every table, is in the [case study chapter](Case_Study_Provision_Similarity_EN.md).
+
+All numbers below come from local rebuilds of the two features, run on real platform data (`es_bench/` and `memo_bench/`). They are not measurements of the production system. No client data is in this repository: only aggregate numbers.
+
+### 8.1 The two features
+
+| | A. Similar provisions | B. Suggested responses for comment memos |
+|---|---|---|
+| What the user sees | "Provisions similar to this one, above X %" across a firm's provision database | Past responses to similar questions, while answering a new comment |
+| Score of record | **Edit distance** (`rapidfuzz.fuzz.ratio`, 0–100) on the cleaned text | **Cosine** between `text-embedding-3-large` embeddings (3,072-d) |
+| Where it lives | A precomputed pair matrix in PostgreSQL; stored if ≥ 30, UI default 70 | A Qdrant collection; **exact** search filtered by firm, 50 results, floor 0.5 then 0.42 |
+| Pain | Storage growth and slow writes: each new provision is compared with every other one in the firm | Latency per request |
+| Do vectors matter? | Embeddings (`text-embedding-3-small`, 1,536-d) exist in Elasticsearch, but **no feature reads them** | Yes, they are the search |
+
+**Premise check first.** The first benchmark plan (`provision_search_benchmark.*`, `PROVISION_SEARCH_CHECKS.md`) assumed a Qdrant collection of provision embeddings and a cosine auto-merge threshold of 0.90. Reading the platform code showed that neither exists. Qdrant holds comment memos only, and auto-merge also uses edit distance. The benchmark was rewritten for Elasticsearch (`es_bench/`).
+
+### 8.2 Case A: similar provisions (`es_bench/`)
+
+**Setup.** A local stand-in of the platform's index: 2,501 distinct provision texts, cleaned as the platform cleans them, embedded with the platform's model, in a local Elasticsearch 8.18 with the platform's mapping. Ground truth: exact `fuzz.ratio` of 500 query provisions against all 2,501. Twelve known-answer checks (`canary.py`) run before any number is trusted, for example the trigram code against PostgreSQL's real `pg_trgm`.
+
+**How many pairs are "similar"?** Two unrelated long legal provisions already score about 38, so a low floor keeps almost every pair:
+
+| Stored if fuzz.ratio ≥ | 30 | 40 | 50 | 60 | 70 |
+|---|---|---|---|---|---|
+| Share of all pairs kept | **70 %** | 45 % | **1.6 %** | 0.8 % | 0.7 % |
+
+For a firm of 500,000 provisions that is about 87 billion pairs at a floor of 30, and about 2 billion at 50.
+
+**Does compression change the pairs found?** Compressed cosine neighbours could at most pick *which* pairs to score. Recall of the pairs with fuzz.ratio ≥ 70 among 200 candidates per provision:
+
+| Method | Memory vs float32 | Top-10 overlap with float32 (no rescore → rescore 2×) | Recall of fuzz ≥ 70 pairs @200 |
+|---|---|---|---|
+| float32 | 1× | 1.000 | 99.8 % |
+| scalar int8 | 4× smaller | 0.949 → 0.999 | 99.8 % |
+| binary 1-bit | 32× smaller | 0.824 → 0.962 | 99.7 % |
+| TurboQuant 4-bit | 8× smaller | **0.966 → 1.000** | 99.8 % |
+| TurboQuant 2-bit | 16× smaller | **0.902 → 0.992** | 99.8 % |
+| Trigram neighbours (`pg_trgm`), no vectors | – | – | **100 %** |
+
+TurboQuant keeps the cosine neighbours better than int8 or binary at each bit budget, as the paper promises. The pairs the product scores do not move, because they are near-duplicates that every method finds. Elasticsearch's own options agree: top-10 overlap with exact search is 0.993 for `hnsw`, 0.986 for `int8_hnsw`, 0.950 for `int4_hnsw` (0.996 with rescoring) and 0.878 for `bbq_hnsw` (0.995 with rescoring). Elasticsearch 8.18 already applies `int8_hnsw` by default when a mapping does not choose.
+
+**Verdict A: TurboQuant cannot help.** The score is edit distance, not cosine, and the cost is the number of pairs kept, which no vector technique changes. The levers are the floor (a product decision) and a candidate filter; trigram matching, already in PostgreSQL, does as well as the embeddings.
+
+### 8.3 Case B: comment-memo suggestions (`memo_bench/`)
+
+**Setup.** A local rebuild of the memo path: 1,238 real comments (685 questions, 553 responses), the platform's model, the same Qdrant version, exact search with the firm filter, own thread excluded, 50 results, floors 0.5 then 0.42. Known-answer check first: Qdrant's results equal a numpy exact search on 200 of 200 queries.
+
+**Where the time goes in one suggestion request:**
+
+| Step | Time (p50) |
+|---|---|
+| Embedding the new comment (API call) | ~240 ms |
+| Vector search, 1,238 memos, exact | **~14 ms** |
+| LLM relevance check over the top 12 (a call of similar size, not the platform's own gate) | **~3,800 ms** |
+
+**When would the search matter?** All memos in one firm, the worst case for exact search:
+
+| Memos in the firm | Exact search p50 | Vector RAM, float32 | With Qdrant's built-in int8 |
+|---|---|---|---|
+| 10,000 | 21 ms | 117 MB | 29 MB |
+| 50,000 | 53 ms | 586 MB | 146 MB |
+| 200,000 | 339 ms | 2.3 GB | 0.6 GB (255 ms) |
+
+**Does compression change the suggestions?** Score floor 0.5, pairs from each question's top 50:
+
+| Method | Memory per vector | Top-10 overlap | Suggestions dropped at 0.5 |
+|---|---|---|---|
+| float32 | 12 KB | 1.000 | 0 |
+| scalar int8 (offline) | 3 KB | 0.965 | 1,438 of 22,193 (6.5 %) |
+| **TurboQuant 4-bit** | 1.5 KB | **0.983** | **244 (1.1 %)** |
+| TurboQuant 2-bit | 0.75 KB | 0.945 | 3,574 (16 %) |
+| Qdrant int8 / binary **with rescoring** | – | – | **0** |
+
+**Verdict B: TurboQuant does not help here either.** The vector search is well under 1 % of the request, suggestions are computed in the background, and Qdrant's own quantization with rescoring loses nothing with no new code. What the benchmark did find: two random memos already score 0.38 on average (95th percentile 0.56), so the 0.5 floor lets through about 152 candidates per question. Suggestion quality depends on the re-ranker and the LLM check, not on vector precision.
+
+### 8.4 Checklist: before you compress vectors
+
+1. **Where are the vectors written and read?** If nothing reads them, ask whether to keep paying for them, not how to compress them.
+2. **Is the product's score a vector score?** If it is edit distance, BM25 or a rule, vectors can only pre-filter, and a lexical pre-filter may do as well.
+3. **What dominates the cost?** Count stored items, model calls and round trips. Compression shrinks bytes per vector, not the number of anything.
+4. **Is search exact or approximate?** Exact search on small filtered sets is rarely memory-bound.
+5. **Validate the instruments.** Check every measurement against a known answer before trusting it.
+
+---
+
+## 9. Limitations and open questions
 
 * **The reference implementation is not a kernel.** `turboquant_core.py` dequantizes in PyTorch: it saves memory, but decoding is slower than FP16. Real speedups need fused kernels (vLLM, or community Triton kernels).
 * **Unbiased is not always better.** TurboQuant_prod's QJL stage removes bias but adds variance; at 3 bits and above, and inside a softmax, the MSE variant is usually the better choice.
@@ -548,11 +708,11 @@ Exact float32 search ran at 857 QPS.
 * **Outlier splitting needs a calibration sample.** `MixedTurboQuant` picks outlier channels from the prefill. That is light, but it is not strictly data-oblivious.
 * **Beam search and cache cropping** are not supported by the demo's `TurboQuantCache`; use greedy or sampled decoding.
 * **Pending measurements.** LLM quality, needle and speed numbers for Qwen, and the DBpedia-1536 search results, are still to be measured on real hardware (see `HANDOFF.md`).
-* **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. A worked example with real data: [Case study: when vector compression does not help](Case_Study_Provision_Similarity_EN.md).
+* **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. Two worked examples with real data are in section 8 and the [case study chapter](Case_Study_Provision_Similarity_EN.md).
 
 ---
 
-## 9. Glossary
+## 10. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -581,7 +741,7 @@ Exact float32 search ran at 857 QPS.
 | **KL divergence** | How different two probability distributions are; here, the compressed model's next-token distribution versus the FP16 model's. |
 | **Needle in a haystack** | A test that hides a fact in a long document and asks the model to retrieve it. |
 | **LongBench** | A benchmark of long-context tasks (QA, summarization, code and more). |
-| **Product quantization (PQ)** | A trained vector-compression method: split vectors into sub-vectors and replace each with the nearest of a set of k-means centroids. |
+| **Product quantization (PQ)** | A trained vector-compression method: split vectors into sub-vectors and replace each with the nearest of a set of k-means centroids. See section 5.4. |
 | **RaBitQ** | A randomized binary quantization method for vector search; one of the paper's baselines. |
 | **Recall@1@k** | Fraction of queries whose true nearest neighbour appears in the top k results. |
 | **10@10** | Overlap between the true top 10 and the returned top 10. |
@@ -591,7 +751,7 @@ Exact float32 search ran at 857 QPS.
 
 ---
 
-## 10. References
+## 11. References
 
 1. A. Zandieh, M. Daliri, M. Hadian, V. Mirrokni. *TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate.* arXiv:2504.19874, 2025. (`docs/2504.19874v1.pdf`)
 2. A. Zandieh, M. Daliri, I. Han. *QJL: 1-Bit Quantized JL Transform for KV Cache Quantization with Zero Overhead.* arXiv:2406.03482, 2024. (`docs/2406.03482v2.pdf`)
@@ -601,6 +761,7 @@ Exact float32 search ran at 857 QPS.
 6. turbovec (Rust + SIMD TurboQuant for vector search): https://github.com/ryancodrai/turbovec
 7. turboquant (Triton kernels and vLLM integration for RTX 30/40/50 GPUs): https://github.com/0xsero/turboquant
 8. *TurboQuant vs traditional quantization: eliminating memory overhead in LLMs* (Medium). https://medium.com/@tahirbalarabe2/turboquant-vs-traditional-quantization-eliminating-memory-overhead-in-llms-24524af4adb8
+9. H. Jégou, M. Douze, C. Schmid. *Product Quantization for Nearest Neighbor Search.* IEEE Transactions on Pattern Analysis and Machine Intelligence, 33(1), 2011.
 
 ---
 
@@ -608,7 +769,7 @@ Exact float32 search ran at 857 QPS.
 
 | Guide section | Slides (deck order) | Notebook |
 |---|---|---|
-| 1. Introduction | *TurboQuant* (cover), *The problem*, *TurboQuant in one picture* | – |
+| 1. Introduction | *TurboQuant* (cover), *Background · the KV cache*, *The problem*, *Background · quantization*, *TurboQuant in one picture* | – |
 | 2. Three papers | *Three papers, one idea* | – |
 | 3.1 Hidden tax | *The hidden tax* | LLM §2 (INT-b configurations) |
 | 3.2 to 3.4 Rotation and codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vector §3 |
@@ -619,23 +780,25 @@ Exact float32 search ran at 857 QPS.
 | 4.3 Production | *In production* | LLM §6 |
 | 5.1 Vector search | *Use case 2 · Vector search* | – |
 | 5.3 Paper results | *Paper results · Vector search* | – |
+| 5.4 Product quantization | – (guide only) | vector §5 |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | both notebooks |
 | 7. Practical guidance | *Practical guidance* | – |
-| Case study (separate chapter) | – | `es_bench/` |
-| 10. References | *References* | – |
+| 8. Real case studies | *Case studies · Real data*, *Case A · Similar provisions*, *Case B · Memo suggestions*, *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
+| Case study (separate chapter) | – | `es_bench/`, `memo_bench/` |
+| 11. References | *References* | – |
 
 ### Suggested workshop agenda (about 90 minutes)
 
 | Time | Block | Material |
 |---|---|---|
-| 0:00 | Why memory is the bottleneck; TurboQuant in one picture | Guide §1, slides 1 to 3 |
+| 0:00 | How the KV cache works; why memory is the bottleneck; how quantization works; TurboQuant in one picture | Guide §1, slides 1 to 3 |
 | 0:10 | The three papers | Guide §2, slide 4 |
 | 0:15 | How it works: overhead, rotation, codebook, QJL residual, bounds | Guide §3, slides 5 to 8 |
 | 0:35 | Use case 1: KV cache, paper and production results | Guide §4, slides 9 to 11 |
 | 0:45 | Use case 2: vector search | Guide §5, slides 12 and 13 |
 | 0:50 | Hands-on: run both notebooks | Guide §6, slides 14 to 19 |
-| 1:20 | Practical guidance, limitations, Q&A | Guide §7 and §8, slides 20 and 21 |
-| 1:30 | Optional (+15 min): a case where compression does not help | Case study chapter, `es_bench/` |
+| 1:20 | Practical guidance, limitations, Q&A | Guide §7 and §9, slides 20 and 21 |
+| 1:30 | Optional (+15 min): two real cases where compression does not help | Guide §8, the four *Case* slides, case study chapter |
 
 ---
 

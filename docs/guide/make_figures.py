@@ -219,6 +219,39 @@ T = {
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4-bit", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (no training)", f14_leg2="trained or calibrated baselines",
         f14_build="build time",
+        f15_t="How the KV cache works",
+        f15_s="A model writes one word at a time, and every new word has to look back at all the words before it.",
+        f15_leg_new="K and V computed in this step", f15_leg_old="K and V read from the cache (computed earlier)",
+        f15_no="Without a cache: recompute everything", f15_yes="With a KV cache: compute once, reuse",
+        f15_step="step", f15_words=["The", "capital", "of", "France", "is"], f15_next=["France", "is", "Paris"],
+        f15_no_work="K and V computed: 3 + 4 + 5 = 12, and it keeps growing",
+        f15_yes_work="K and V computed: 3 + 1 + 1 = 5, one per new word",
+        f15_q="Query (q)", f15_qb="What the newest word is looking for. Made fresh at every step, never stored.",
+        f15_k="Key (k)", f15_kb="A label saying what an earlier word is about. Compared with q to decide where to look.",
+        f15_v="Value (v)", f15_vb="The information an earlier word hands over, weighted by how well its key matched.",
+        f15_foot="The price: one K and one V per word, in every layer and head. Llama-3.1-8B: 128 KB per word, 16 GB at 128k words.",
+        f16_t="How quantization works, step by step",
+        f16_s="Eight numbers squeezed into 2 bits each with classic min-max rounding: encode, store, read back.",
+        f16_1="1. Find the range", f16_1b="Smallest and largest number of the block.",
+        f16_2="2. Lay out 2ᵇ values", f16_2b="2 bits give 4 allowed values, evenly spaced over the range.",
+        f16_3="3. Round each number", f16_3b="Keep only the 2-bit code of the nearest allowed value.",
+        f16_4="4. Store, read back", f16_4b="Codes plus the range. Reading back turns each code into its value.",
+        f16_step="step", f16_range="range: min, max",
+        f16_r_orig="Original", f16_r_orig2="16 bits each", f16_r_code="Code", f16_r_code2="2 bits each",
+        f16_r_back="Read back", f16_r_err="Error",
+        f16_mem="Memory", f16_memb="8 × 16 = 128 bits become 8 × 2 = 16 bits of codes, plus 2 × 16 bits for min and step: 48 bits, 2.7x smaller. Real blocks hold 32 to 128 numbers, so the range costs less, but it never disappears.",
+        f16_why="Why TurboQuant rotates first", f16_whyb="The two extremes (−1.32 and 1.94) set the range, so five of the eight numbers share just two values. After a random rotation no number sticks out, and one fixed set of values fits every vector, with no range to store.",
+        f17_t="Product quantization (PQ) in one picture",
+        f17_s="Split the vector into pieces, learn a small codebook for each piece, and store one ID per piece.",
+        f17_1="1. Split", f17_1b="8 numbers become 4 sub-vectors of 2 numbers each.",
+        f17_sub="sub-vector",
+        f17_2="2. Learn a codebook per piece (k-means, trained on the data)",
+        f17_space="sub-space", f17_cent="centroid", f17_pt="this sub-vector",
+        f17_3="3. Store the ID of the nearest centroid",
+        f17_3b="4 IDs × 8 bits = 32 bits, instead of 8 × 32 = 256 bits (8x smaller). Drawn with 8 centroids; real PQ uses 256 (one byte) or 16 (FastScan).",
+        f17_4="4. Search with lookup tables",
+        f17_4b="For each query, compute once its distance to every centroid of every sub-space. The distance to any stored vector is then 4 table lookups added up.",
+        f17_foot="Unlike TurboQuant, the codebooks are learned from the data: training comes first and must be repeated when the data drifts.",
     ),
     "es": dict(
         f00_t="TurboQuant en una imagen",
@@ -319,6 +352,39 @@ T = {
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4 bits", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (sin entrenamiento)", f14_leg2="baselines entrenados o calibrados",
         f14_build="tiempo de construcción",
+        f15_t="Cómo funciona la caché KV",
+        f15_s="Un modelo escribe palabra a palabra, y cada palabra nueva tiene que mirar a todas las anteriores.",
+        f15_leg_new="K y V calculadas en este paso", f15_leg_old="K y V leídas de la caché (calculadas antes)",
+        f15_no="Sin caché: recalcularlo todo", f15_yes="Con caché KV: calcular una vez, reutilizar",
+        f15_step="paso", f15_words=["La", "capital", "de", "Francia", "es"], f15_next=["Francia", "es", "París"],
+        f15_no_work="K y V calculadas: 3 + 4 + 5 = 12, y no deja de crecer",
+        f15_yes_work="K y V calculadas: 3 + 1 + 1 = 5, una por palabra nueva",
+        f15_q="Consulta (q)", f15_qb="Lo que busca la palabra más reciente. Se calcula en cada paso y no se guarda.",
+        f15_k="Clave (k)", f15_kb="Una etiqueta que dice de qué trata una palabra anterior. Se compara con q para decidir dónde mirar.",
+        f15_v="Valor (v)", f15_vb="La información que aporta una palabra anterior, ponderada por lo bien que encajó su clave.",
+        f15_foot="El precio: una K y una V por palabra, en cada capa y cabeza. Llama-3.1-8B: 128 KB por palabra, 16 GB con 128k palabras.",
+        f16_t="Cómo funciona la cuantización, paso a paso",
+        f16_s="Ocho números comprimidos a 2 bits cada uno con redondeo clásico mín-máx: codificar, guardar, recuperar.",
+        f16_1="1. Buscar el rango", f16_1b="El número más pequeño y el más grande del bloque.",
+        f16_2="2. Repartir 2ᵇ valores", f16_2b="2 bits dan 4 valores permitidos, repartidos por igual en el rango.",
+        f16_3="3. Redondear cada número", f16_3b="Solo se guarda el código de 2 bits del valor permitido más cercano.",
+        f16_4="4. Guardar y recuperar", f16_4b="Códigos más el rango. Al leer, cada código se convierte en su valor.",
+        f16_step="paso", f16_range="rango: mín, máx",
+        f16_r_orig="Original", f16_r_orig2="16 bits cada uno", f16_r_code="Código", f16_r_code2="2 bits cada uno",
+        f16_r_back="Recuperado", f16_r_err="Error",
+        f16_mem="Memoria", f16_memb="8 × 16 = 128 bits pasan a 8 × 2 = 16 bits de códigos, más 2 × 16 bits para mínimo y paso: 48 bits, 2,7 veces menos. Los bloques reales tienen de 32 a 128 números, así que el rango pesa menos, pero nunca desaparece.",
+        f16_why="Por qué TurboQuant rota primero", f16_whyb="Los dos extremos (−1,32 y 1,94) fijan el rango, así que cinco de los ocho números comparten solo dos valores. Tras una rotación aleatoria ningún número destaca, y un único conjunto fijo de valores sirve para cualquier vector, sin rango que guardar.",
+        f17_t="La cuantización por producto (PQ) en una imagen",
+        f17_s="Se parte el vector en trozos, se aprende un pequeño codebook para cada trozo y se guarda un ID por trozo.",
+        f17_1="1. Partir", f17_1b="8 números pasan a ser 4 subvectores de 2 números.",
+        f17_sub="subvector",
+        f17_2="2. Aprender un codebook por trozo (k-means, entrenado con los datos)",
+        f17_space="subespacio", f17_cent="centroide", f17_pt="este subvector",
+        f17_3="3. Guardar el ID del centroide más cercano",
+        f17_3b="4 IDs × 8 bits = 32 bits, en lugar de 8 × 32 = 256 bits (8 veces menos). Dibujado con 8 centroides; la PQ real usa 256 (un byte) o 16 (FastScan).",
+        f17_4="4. Buscar con tablas de consulta",
+        f17_4b="Para cada consulta se calcula una vez su distancia a cada centroide de cada subespacio. La distancia a cualquier vector guardado es entonces la suma de 4 lecturas de tabla.",
+        f17_foot="A diferencia de TurboQuant, los codebooks se aprenden de los datos: primero hay que entrenar, y hay que repetirlo cuando los datos cambian.",
     ),
 }
 
@@ -766,6 +832,209 @@ def fig14(t, lang):
     return s
 
 
+def fig15(t, lang, deck=False):
+    """How the KV cache works, for readers who have never met it. deck=True drops the title and footer."""
+    top = 24 if deck else 100
+    s = Svg(1000, top + 392 if deck else top + 426, t["f15_t"])
+    if not deck:
+        header(s, t["f15_t"], t["f15_s"])
+    green = "#3C8C5A"
+    s.rect(32, top - 12, 16, 14, ORANGE, rx=2); s.text(56, top, t["f15_leg_new"], 13, INK)
+    s.rect(392, top - 12, 16, 14, BLUE, rx=2); s.text(416, top, t["f15_leg_old"], 13, INK)
+    words = t["f15_words"]
+    for p, (px, ttl, work, cached) in enumerate([(28, t["f15_no"], t["f15_no_work"], False),
+                                                (510, t["f15_yes"], t["f15_yes_work"], True)]):
+        py = top + 16
+        s.rect(px, py, 462, 270, CARD, BORDER)
+        s.text(px + 16, py + 30, ttl, 15.5, NAVY, 600)
+        for r in range(3):
+            ry = py + 50 + r * 62
+            n = 3 + r
+            s.text(px + 16, ry + 28, f"{t['f15_step']} {r + 1}", 12.5, MUTED, 600)
+            for i in range(n):
+                cx = px + 62 + i * 60
+                new = (not cached) or r == 0 or i == n - 1
+                col = ORANGE if new else BLUE
+                s.rect(cx, ry, 54, 20, "#E9E6DD", None, rx=4)
+                s.text(cx + 27, ry + 15, words[i], 11.5, INK, 600, "middle")
+                for k, lbl in enumerate("KV"):
+                    s.rect(cx + k * 28, ry + 24, 26, 22, col, None, rx=4, opacity=0.9)
+                    s.text(cx + k * 28 + 13, ry + 40, lbl, 12, "#FFFFFF", 700, "middle")
+            s.arrow(px + 366, ry + 23, px + 384, ry + 23, MUTED, 1.8)
+            s.rect(px + 388, ry + 9, 62, 28, NAVY, None, rx=6)
+            s.text(px + 419, ry + 28, t["f15_next"][r], 12.5, PEACH, 700, "middle")
+        s.text(px + 16, py + 254, work, 13, ORANGE if not cached else green, 700)
+    cy = top + 300
+    for j, (ttl, body, col) in enumerate([(t["f15_q"], t["f15_qb"], ORANGE), (t["f15_k"], t["f15_kb"], BLUE),
+                                          (t["f15_v"], t["f15_vb"], BLUE)]):
+        bx = 28 + j * 318
+        s.rect(bx, cy, 308, 86, CARD, BORDER)
+        s.rect(bx, cy, 6, 86, col, None, rx=2)
+        s.text(bx + 18, cy + 22, ttl, 14, NAVY, 700)
+        s.lines(bx + 18, cy + 42, body, 12, "#3A4556", width=46)
+    if not deck:
+        s.text(32, cy + 118, t["f15_foot"], 13, MUTED, italic=True)
+    return s
+
+
+def fig16(t, lang, deck=False):
+    """How scalar quantization works, on eight concrete numbers. deck=True drops the title and the two notes."""
+    top = 24 if deck else 100
+    xs = [0.71, -1.32, 0.18, 1.94, -0.43, -0.05, 1.12, -0.88]
+    lo, hi = min(xs), max(xs)
+    step = (hi - lo) / 3
+    levels = [lo + i * step for i in range(4)]
+    codes = [min(range(4), key=lambda i: abs(v - levels[i])) for v in xs]
+    def sg(v):
+        return "0" if abs(v) < 0.005 else num(v, lang, 2).replace("-", "−")
+    s = Svg(1000, top + 446 if deck else top + 576, t["f16_t"])
+    if not deck:
+        header(s, t["f16_t"], t["f16_s"])
+    # the four steps
+    w, gap = 219, 22
+    for i in range(4):
+        x = 28 + i * (w + gap)
+        s.box(x, top, w, 86, t[f"f16_{i + 1}"], t[f"f16_{i + 1}b"], dark=(i == 3), tsize=14, bsize=12.5)
+        if i < 3:
+            s.arrow(x + w + 2, top + 43, x + w + gap - 2, top + 43)
+    # the ruler: bands of the four codes, the allowed values, and where each number lands
+    ry = top + 104
+    s.rect(28, ry, 944, 160, CARD, BORDER)
+    a, b = -1.6, 2.2
+    def X(v):
+        return 110 + (v - a) / (b - a) * 820
+    ly = ry + 96
+    edges = [a] + [(levels[i] + levels[i + 1]) / 2 for i in range(3)] + [b]
+    for i in range(4):
+        s.rect(X(edges[i]), ry + 14, X(edges[i + 1]) - X(edges[i]), ly - ry - 14, PEACHBG if i % 2 == 0 else "#F3E6DA", rx=0)
+        s.text((X(edges[i]) + X(edges[i + 1])) / 2, ry + 34, format(i, "02b"), 15, ORANGE, 700, "middle", mono=True)
+    s.line(X(a), ly, X(b), ly, MUTED, 2)
+    for v, c in zip(xs, codes):
+        s.circle(X(v), ly - 30, 6, BLUE)
+        s.text(X(v), ly - 42, sg(v), 11, BLUE, 600, "middle", mono=True)
+        s.line(X(v), ly - 23, X(levels[c]), ly - 11, BLUE, 1.5, arrow=True)
+    for lv in levels:
+        s.circle(X(lv), ly, 8, ORANGE)
+        s.text(X(lv), ly + 24, sg(lv), 12, ORANGE, 700, "middle", mono=True)
+    s.line(X(lo), ly + 38, X(hi), ly + 38, NAVY, 1.5)
+    for v in (lo, hi):
+        s.line(X(v), ly + 32, X(v), ly + 44, NAVY, 1.5)
+    s.text((X(lo) + X(hi)) / 2, ly + 56, f"{t['f16_range']} = {sg(lo)}, {sg(hi)}", 12, NAVY, 600, "middle")
+    s.text(44, ly - 26, f"{t['f16_step']} 3", 12, MUTED, 600)
+    s.text(44, ly + 5, f"{t['f16_step']} 2", 12, MUTED, 600)
+    s.text(44, ly + 42, f"{t['f16_step']} 1", 12, MUTED, 600)
+    # the table: one column per number
+    ty = ry + 190
+    s.rect(28, ty - 16, 944, 152, CARD, BORDER)
+    rows = [(t["f16_r_orig"], t["f16_r_orig2"]), (t["f16_r_code"], t["f16_r_code2"]), (t["f16_r_back"], ""), (t["f16_r_err"], "")]
+    cw = 92
+    for r, (lbl, sub) in enumerate(rows):
+        y = ty + r * 34
+        s.text(44, y + 17, lbl, 13.5, NAVY, 700)
+        if sub:
+            s.text(44 + len(lbl) * 8.2 + 8, y + 17, sub, 11.5, MUTED)
+        for j, (v, c) in enumerate(zip(xs, codes)):
+            cx = 230 + j * cw
+            if r == 0:
+                s.rect(cx, y, cw - 10, 24, BLUEBG, None, rx=5); s.text(cx + (cw - 10) / 2, y + 17, sg(v), 13, BLUE, 600, "middle", mono=True)
+            elif r == 1:
+                s.rect(cx, y, cw - 10, 24, PEACHBG, None, rx=5); s.text(cx + (cw - 10) / 2, y + 17, format(c, "02b"), 13, ORANGE, 700, "middle", mono=True)
+            elif r == 2:
+                s.rect(cx, y, cw - 10, 24, "#E9E6DD", None, rx=5); s.text(cx + (cw - 10) / 2, y + 17, sg(levels[c]), 13, NAVY, 600, "middle", mono=True)
+            else:
+                s.text(cx + (cw - 10) / 2, y + 17, sg(abs(v - levels[c])), 12.5, MUTED, 400, "middle", mono=True)
+    if not deck:
+        cy = ty + 154
+        s.box(28, cy, 466, 112, t["f16_mem"], t["f16_memb"], tsize=14, bsize=12.5)
+        s.box(506, cy, 466, 112, t["f16_why"], t["f16_whyb"], accent=True, tsize=14, bsize=12.5)
+    return s
+
+
+def _kmeans(pts, k, iters=25):
+    c = pts[np.linspace(0, len(pts) - 1, k).astype(int)].copy()
+    for _ in range(iters):
+        lab = ((pts[:, None, :] - c[None]) ** 2).sum(-1).argmin(1)
+        for j in range(k):
+            if (lab == j).any():
+                c[j] = pts[lab == j].mean(0)
+    return c
+
+
+def fig17(t, lang):
+    """Product quantization (PQ) in one picture: split, learn codebooks, store IDs, search with lookup tables."""
+    s = Svg(1000, 604, t["f17_t"])
+    header(s, t["f17_t"], t["f17_s"])
+    xs = [0.71, -1.32, 0.18, 1.94, -0.43, -0.05, 1.12, -0.88]
+    cols = [BLUE, ORANGE, "#3C8C5A", "#7A5BA6"]
+    def sg(v):
+        return num(v, lang, 2).replace("-", "−")
+    s.text(32, 112, t["f17_1"], 14, NAVY, 700)
+    s.text(110, 112, t["f17_1b"], 13, MUTED)
+    gw, gx = 222, [28 + i * 241 for i in range(4)]
+    for g in range(4):
+        for j in range(2):
+            cx = gx[g] + j * (gw / 2)
+            s.rect(cx + 2, 124, gw / 2 - 6, 28, cols[g], None, rx=5, opacity=0.15)
+            s.text(cx + gw / 4, 143, sg(xs[2 * g + j]), 13, cols[g], 700, "middle", mono=True)
+        s.path(f"M{gx[g] + 4},{158} L{gx[g] + 4},{164} L{gx[g] + gw - 6},{164} L{gx[g] + gw - 6},{158}", cols[g], sw=1.5)
+        s.text(gx[g] + gw / 2, 182, f"{t['f17_sub']} {g + 1}", 12, cols[g], 600, "middle")
+    s.text(32, 214, t["f17_2"], 14, NAVY, 700)
+    rng = np.random.default_rng(7)
+    ids = []
+    for g in range(4):
+        x0, y0, cw, ch = gx[g], 226, gw, 186
+        s.rect(x0, y0, cw, ch, CARD, BORDER)
+        s.text(x0 + 12, y0 + 20, f"{t['f17_space']} {g + 1}", 12, cols[g], 600)
+        q = np.array(xs[2 * g: 2 * g + 2])
+        mix = rng.normal(size=(4, 2)) * 1.0
+        mix[0] = q + 0.3 * rng.normal(size=2)
+        pts = np.concatenate([m + 0.45 * rng.normal(size=(18, 2)) for m in mix])
+        pts = np.clip(pts, -2.4, 2.4)
+        cen = _kmeans(pts, 8)
+        k = int(((cen - q) ** 2).sum(1).argmin())
+        ids.append(k)
+        def P(v):
+            return x0 + 20 + (v[0] + 2.5) / 5 * (cw - 40), y0 + 30 + (2.5 - v[1]) / 5 * (ch - 44)
+        for pnt in pts:
+            px, py = P(pnt)
+            s.circle(px, py, 2.4, GREY)
+        for j, c in enumerate(cen):
+            px, py = P(c)
+            if j == k:
+                s.circle(px, py, 7, cols[g])
+            else:
+                s.add(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="5.5" fill="{CARD}" stroke="{cols[g]}" stroke-width="2"/>')
+        qx, qy = P(q)
+        cx, cy = P(cen[k])
+        s.line(qx, qy, cx, cy, INK, 1.5, dash="3 3")
+        s.add(f'<rect x="{qx - 5:.1f}" y="{qy - 5:.1f}" width="10" height="10" fill="{INK}" transform="rotate(45 {qx:.1f} {qy:.1f})"/>')
+        lx = cx + 12 if cx < x0 + cw - 60 else cx - 52
+        s.rect(lx, cy - 24, 40, 18, CARD, cols[g], rx=4, sw=1)
+        s.text(lx + 20, cy - 11, f"ID {k}", 11.5, cols[g], 700, "middle", mono=True)
+    # legend for the scatter cards
+    ly = 432
+    s.add(f'<rect x="{38 - 5:.1f}" y="{ly - 9:.1f}" width="10" height="10" fill="{INK}" transform="rotate(45 38 {ly - 4})"/>')
+    s.text(52, ly, t["f17_pt"], 12, INK)
+    s.add(f'<circle cx="200" cy="{ly - 4}" r="5.5" fill="{CARD}" stroke="{MUTED}" stroke-width="2"/>')
+    s.text(212, ly, t["f17_cent"], 12, INK)
+    s.circle(320, ly - 4, 2.4, GREY)
+    s.text(330, ly, "data" if lang == "en" else "datos", 12, INK)
+    # store and search
+    by = 448
+    s.rect(28, by, 466, 124, CARD, BORDER)
+    s.text(42, by + 24, t["f17_3"], 14, NAVY, 600)
+    for g in range(4):
+        s.rect(42 + g * 56, by + 36, 48, 28, cols[g], None, rx=5)
+        s.text(66 + g * 56, by + 55, str(ids[g]), 14, "#FFFFFF", 700, "middle", mono=True)
+    s.lines(42, by + 82, t["f17_3b"], 12, "#3A4556", width=76)
+    s.rect(506, by, 466, 124, NAVY, None)
+    s.text(520, by + 24, t["f17_4"], 14, PEACH, 600)
+    s.text(520, by + 52, "d(q, x) ≈ " + " + ".join(f"T{g + 1}[{ids[g]}]" for g in range(4)), 14, "#FFFFFF", 600, mono=True)
+    s.lines(520, by + 78, t["f17_4b"], 12, "#D9DEE6", width=74)
+    s.text(32, 598, t["f17_foot"], 13, MUTED, italic=True)
+    return s
+
+
 def main():
     bias = _bias_data()
     torch.manual_seed(0)
@@ -776,7 +1045,10 @@ def main():
             "fig03_papers": fig03(t, lang), "fig04_overhead": fig04(t, lang), "fig05_rotation": fig05(t, lang),
             "fig06_codebook": fig06(t, lang), "fig07_pipeline": fig07(t, lang), "fig08_unbiased": fig08(t, lang, bias),
             "fig10_kvcache": fig10(t, lang), "fig11_outliers": fig11(t, lang), "fig12_vector_search": fig12(t, lang),
-            "fig14_recall": fig14(t, lang),
+            "fig14_recall": fig14(t, lang), "fig15_kvcache_basics": fig15(t, lang),
+            "fig15_kvcache_basics_deck": fig15(t, lang, deck=True),
+            "fig16_quant_process": fig16(t, lang), "fig16_quant_process_deck": fig16(t, lang, deck=True),
+            "fig17_pq": fig17(t, lang),
         }
         torch.manual_seed(0)
         figs["fig09_bounds"], meas = fig09(t, lang)

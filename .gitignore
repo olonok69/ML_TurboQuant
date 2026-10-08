@@ -23,3 +23,4 @@ __pycache__/
 # es_bench: provision data, vectors and results never go into git
 es_bench/results/
 *.npz
+*.pdf

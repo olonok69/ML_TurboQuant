@@ -15,7 +15,7 @@ Runs locally (CPU). Reuses `../provision_bench.py` and `../turboquant_core.py` u
 |---|---|
 | `docker-compose.yml` | Local Elasticsearch 8.18.0 single node, security off, 2 GB heap, port 9201 (same as dev) |
 | `es_provision_bench.py` | Library: read-only index views, sample loading (PIT), live kNN, local index types, fuzz.ratio truth, pg_trgm-exact trigram similarity, candidate recall |
-| `canary.py` | Known-answer checks for every instrument (13 checks, incl. trigram vs a real Postgres `pg_trgm`). Run first |
+| `canary.py` | Known-answer checks for every instrument (12 checks, incl. trigram vs a real Postgres `pg_trgm`). Run first |
 | `make_local_pd.py` | Builds a local stand-in of the PD index from extracted side-letter JSONs (monolith cleaning, dedup, model) |
 | `run_es_bench.py` | The benchmark: sections 1-8, writes CSVs + `REPORT.md` |
 

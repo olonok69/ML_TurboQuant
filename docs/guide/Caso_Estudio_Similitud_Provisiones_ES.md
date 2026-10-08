@@ -52,7 +52,7 @@ las 2.501.
 **Pregunta.** Si en lugar de puntuar todos los pares usáramos vecinos por coseno (float32 o comprimidos) o
 candidatos por trigramas para elegir *qué* pares puntuar, ¿cuántos de los pares reales encontraríamos?
 
-**Primero, validar.** Antes de confiar en ningún número se ejecutan 13 comprobaciones con respuesta conocida
+**Primero, validar.** Antes de confiar en ningún número se ejecutan 12 comprobaciones con respuesta conocida
 (`canary.py`). Por ejemplo: los trigramas coinciden con `pg_trgm` de PostgreSQL a 5·10⁻⁹, un índice
 exacto de Elasticsearch reproduce el top-k exacto y la carga de la muestra devuelve exactamente las filas
 esperadas. Detectaron dos errores del propio benchmark antes de que produjera un solo resultado.
