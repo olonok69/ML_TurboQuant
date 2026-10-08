@@ -86,7 +86,29 @@ Quantization means **rounding**. Instead of storing a number exactly, you store 
 
 TurboQuant's answer to both questions is the same trick: **rotate the vector randomly first**. After the rotation, every coordinate follows the same known distribution, so the best allowed values can be computed once, in advance, for all data, and there is no per-block scale to store.
 
-### 1.4 Results at a glance
+### 1.4 How quantization works, step by step
+
+> **In plain words.** Quantizing is like giving every number a short nickname. You agree in advance on a few allowed values, replace each number with the code of the closest one, and store only the codes. To read the data back, you swap each code for its value. You lose a little precision and save a lot of memory.
+
+![How quantization works, step by step](img/en/fig16_quant_process.svg)
+
+The figure follows eight numbers through the classic recipe used by INT8 and INT4 quantizers (*min-max*, or *uniform*, quantization) at 2 bits per number:
+
+1. **Find the range.** Look at the block of numbers and note the smallest (−1.32) and the largest (1.94).
+2. **Lay out 2ᵇ allowed values.** With 2 bits there are 4 codes: 00, 01, 10 and 11. Their values are spread evenly over the range, one *step* apart: −1.32, −0.23, 0.85 and 1.94 (step = 3.26 / 3 = 1.09). Each code owns the stretch of the line that is closest to its value.
+3. **Round each number.** Replace every number with the code of the nearest allowed value: 0.71 becomes `10`, −0.43 becomes `01`, and so on. This is the only step that loses information.
+4. **Store, then read back.** Store the codes packed tightly (eight 2-bit codes fit in 16 bits), plus the minimum and the step, which are needed to decode. Reading back is one multiply-add per number: value = minimum + code × step.
+
+The last row of the table is the price: each number comes back slightly off, by at most half a step (0.44 here). More bits give more allowed values, a smaller step and a smaller error: every extra bit halves the step and cuts the squared error by about 4x.
+
+Two weaknesses of this recipe explain the rest of the guide:
+
+* **The range is overhead.** The minimum and the step are stored in 16-bit precision for every block. In the figure they cost 32 bits on top of 16 bits of codes. Real blocks are larger, but with blocks of 32 numbers the range still adds a full bit per number (section 3.1).
+* **Outliers waste the allowed values.** The two extreme numbers decide the range, so the allowed values are spread thinly and five of the eight numbers have to share just two of them. Real keys and embeddings have exactly such outlier coordinates (section 3.6).
+
+TurboQuant keeps steps 3 and 4 and replaces steps 1 and 2. A random rotation first spreads each vector evenly over its coordinates, so no number sticks out and every coordinate follows the same known bell curve. The allowed values are computed once for that bell curve (the Lloyd-Max codebook, section 3.3): they sit closer together where numbers are common, and they are the same for every vector, so no range is stored, only one 16-bit length per vector.
+
+### 1.5 Results at a glance
 
 | Claim | Source |
 |---|---|
@@ -387,7 +409,7 @@ These figures come from the formula in section 5 of the LLM notebook and match t
 3. A query is embedded with the same model and the index returns the **top-k** most similar vectors.
 4. In **RAG**, those top-k documents are passed to an LLM as context.
 
-For large collections the index must be compressed to fit in RAM. The standard tool is **product quantization (PQ)**: split each vector into sub-vectors and replace each sub-vector with the nearest of 256 (or 16) centroids learned with k-means.
+For large collections the index must be compressed to fit in RAM. The standard tool is **product quantization (PQ)**: split each vector into sub-vectors and replace each sub-vector with the nearest of 256 (or 16) centroids learned with k-means. Section 5.4 explains how PQ works and how it compares with TurboQuant.
 
 ### 5.2 Why TurboQuant fits
 
@@ -407,6 +429,38 @@ For large collections the index must be compressed to fit in RAM. The standard t
 | **TurboQuant** | **0.0007** | **0.0013** | **0.0021** |
 
 **Recall@1@k** (how often the true nearest neighbour is among the top k returned) beat PQ and RaBitQ on GloVe (d = 200) and on DBpedia entities embedded with OpenAI `text-embedding-3-large` (d = 1536 and d = 3072), at both 2 and 4 bits. The experiments used 100k database vectors and 1k queries (10k for GloVe).
+
+### 5.4 Product quantization (PQ), the method TurboQuant is compared with
+
+> **In plain words.** Product quantization is the classic way to shrink a vector index, and it is the baseline in the TurboQuant paper and in our demo. It cuts every vector into small pieces and keeps, for each piece, a phrase book of typical pieces learned from the data. Each piece is stored as the number of its closest phrase-book entry. It compresses well, but the phrase books have to be learned from your data before anything can be stored, and relearned when the data changes.
+
+![Product quantization in one picture](img/en/fig17_pq.svg)
+
+PQ (Jégou, Douze and Schmid, 2011, reference 9) works in four steps:
+
+1. **Split.** Cut each vector of d numbers into m sub-vectors of d/m numbers. The figure cuts 8 numbers into 4 sub-vectors of 2.
+2. **Learn a codebook for each sub-space.** For each of the m positions, run k-means on the sub-vectors of a training sample. This gives k centroids per sub-space: usually k = 256, so that an ID fits in one byte, or k = 16 (half a byte) in the FastScan variant.
+3. **Encode.** Replace each sub-vector with the ID of its nearest centroid. A vector becomes m small integers: m bytes when k = 256.
+4. **Search with lookup tables.** For each query, compute once the inner product (or distance) between every query sub-vector and every centroid of its sub-space: a table of m × k numbers. The score of any stored vector is then m table lookups added up, read at its IDs. The query itself is never compressed; this is called *asymmetric distance computation*.
+
+The name comes from the fact that the set of vectors PQ can represent is the Cartesian *product* of the m small codebooks. With m = 4 and k = 256 there are 256⁴, about 4 billion, possible reconstructed vectors, described by only 4 × 256 stored centroids.
+
+**Bits per number.** PQ spends m × log₂ k bits per vector, so the bit budget is set by m and k. In the demo at 4 bits per number (384 dimensions, 8x smaller than float32), `FAISS PQ LUT256` uses m = 192 sub-vectors of 2 numbers with 256 centroids each, 192 bytes per vector, exactly the setting drawn in the figure. `FAISS PQ-FastScan` reaches the same budget with m = 384 sub-vectors of 1 number and 16 centroids each.
+
+**PQ versus TurboQuant.**
+
+| | Product quantization | TurboQuant |
+|---|---|---|
+| Codebook | Learned with k-means on your data, one per sub-space | Fixed in advance and the same for all data (Lloyd-Max for a bell curve, section 3.3) |
+| What is rounded | A group of numbers (a sub-vector) at once | One number at a time, after a random rotation |
+| Before the first vector is stored | Training: 240 s for 100k vectors of 1536 dimensions in the paper; 83 s in our demo | Nothing: 0.0013 s to index the same 100k vectors in the paper |
+| When the data drifts | Retrain and re-encode the index | Nothing changes |
+| Recall@1@1 at 4 bits in the demo (section 6.2) | 0.818 | 0.944 (turbovec) |
+| Scoring a query | Lookup tables built per query; very fast with FastScan | Rotate the query once, score against centroid values (section 3.4) |
+
+**Why does a fixed codebook beat a learned one?** PQ's advantage is that its centroids follow the data, including correlations between the numbers inside a sub-vector. TurboQuant removes the need for that: after the random rotation every coordinate follows the same known distribution and the coordinates are nearly independent, so a fixed scalar codebook is already close to optimal (section 3.7). PQ also spends its few centroids on the training sample, which can drift away from the data indexed later.
+
+**When PQ is still a good choice.** PQ is mature and available almost everywhere (FAISS `IndexPQ` and `IndexIVFPQ`, Milvus `IVF_PQ`, Qdrant product quantization), and it can go below 1 bit per number (for example one byte for 16 numbers), which a quantizer that rounds one number at a time cannot. For a static collection that is trained once and rarely changes, it remains a reasonable default. The case for TurboQuant is strongest where vectors arrive continuously (a KV cache, a live index) or where retraining is costly.
 
 ---
 
@@ -685,7 +739,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 | **KL divergence** | How different two probability distributions are; here, the compressed model's next-token distribution versus the FP16 model's. |
 | **Needle in a haystack** | A test that hides a fact in a long document and asks the model to retrieve it. |
 | **LongBench** | A benchmark of long-context tasks (QA, summarization, code and more). |
-| **Product quantization (PQ)** | A trained vector-compression method: split vectors into sub-vectors and replace each with the nearest of a set of k-means centroids. |
+| **Product quantization (PQ)** | A trained vector-compression method: split vectors into sub-vectors and replace each with the nearest of a set of k-means centroids. See section 5.4. |
 | **RaBitQ** | A randomized binary quantization method for vector search; one of the paper's baselines. |
 | **Recall@1@k** | Fraction of queries whose true nearest neighbour appears in the top k results. |
 | **10@10** | Overlap between the true top 10 and the returned top 10. |
@@ -705,6 +759,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 6. turbovec (Rust + SIMD TurboQuant for vector search): https://github.com/ryancodrai/turbovec
 7. turboquant (Triton kernels and vLLM integration for RTX 30/40/50 GPUs): https://github.com/0xsero/turboquant
 8. *TurboQuant vs traditional quantization: eliminating memory overhead in LLMs* (Medium). https://medium.com/@tahirbalarabe2/turboquant-vs-traditional-quantization-eliminating-memory-overhead-in-llms-24524af4adb8
+9. H. Jégou, M. Douze, C. Schmid. *Product Quantization for Nearest Neighbor Search.* IEEE Transactions on Pattern Analysis and Machine Intelligence, 33(1), 2011.
 
 ---
 
@@ -712,7 +767,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 
 | Guide section | Slides (deck order) | Notebook |
 |---|---|---|
-| 1. Introduction | *TurboQuant* (cover), *Background · the KV cache*, *The problem*, *TurboQuant in one picture* | – |
+| 1. Introduction | *TurboQuant* (cover), *Background · the KV cache*, *The problem*, *Background · quantization*, *TurboQuant in one picture* | – |
 | 2. Three papers | *Three papers, one idea* | – |
 | 3.1 Hidden tax | *The hidden tax* | LLM §2 (INT-b configurations) |
 | 3.2 to 3.4 Rotation and codebook | *Stage 1 · TurboQuant_mse* | LLM §1, vector §3 |
@@ -723,6 +778,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 | 4.3 Production | *In production* | LLM §6 |
 | 5.1 Vector search | *Use case 2 · Vector search* | – |
 | 5.3 Paper results | *Paper results · Vector search* | – |
+| 5.4 Product quantization | – (guide only) | vector §5 |
 | 6. Demos | *The demos*, *Demo 1* (×2), *Demo 2* (×2), *Run it yourself* | both notebooks |
 | 7. Practical guidance | *Practical guidance* | – |
 | 8. Real case studies | *Case studies · Real data*, *Case A · Similar provisions*, *Case B · Memo suggestions*, *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
@@ -733,7 +789,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 
 | Time | Block | Material |
 |---|---|---|
-| 0:00 | How the KV cache works; why memory is the bottleneck; TurboQuant in one picture | Guide §1, slides 1 to 3 |
+| 0:00 | How the KV cache works; why memory is the bottleneck; how quantization works; TurboQuant in one picture | Guide §1, slides 1 to 3 |
 | 0:10 | The three papers | Guide §2, slide 4 |
 | 0:15 | How it works: overhead, rotation, codebook, QJL residual, bounds | Guide §3, slides 5 to 8 |
 | 0:35 | Use case 1: KV cache, paper and production results | Guide §4, slides 9 to 11 |
