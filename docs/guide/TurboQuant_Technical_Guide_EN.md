@@ -149,11 +149,37 @@ TurboQuant keeps steps 3 and 4 and replaces steps 1 and 2. A random rotation fir
 
 **The idea.** Apply a random preconditioning (rotation), then convert the vector to **polar coordinates** with a recursive transform: pairs of coordinates become a radius and an angle, the radii are paired again, and so on for log₂ d levels (4 levels in practice). Quantize the angles.
 
-**Why it works.** After random preconditioning, the angles at each level follow a tight distribution whose shape can be computed analytically. Because the distribution is known, there is no need to normalize each block, so no scales or zero points are stored. The paper uses 4 bits for the first-level angles (range 0 to 2π) and 2 bits for the higher levels.
+**Why it works.** After random preconditioning, the angles have a distribution whose shape can be computed analytically (Lemma 2 of the paper). First-level angles are uniform over 0 to 2π. Angles at level ℓ ≥ 2 lie in 0 to π/2 with density proportional to sin^(2^(ℓ−1) − 1)(2ψ): centred on π/4 (45°) and tighter at each level. Because the distribution is known, there is no need to normalize each block, so no scales or zero points are stored. The paper uses 4 bits for the first-level angles and 2 bits for the higher levels, because the first-level range is four times wider.
+
+**A worked example with small numbers.** Take a 4-dimensional vector that has already been rotated, `v = [3, −4, 2, 0.5]` (real heads have 128 dimensions). With d = 4 the tree has log₂ 4 = 2 levels:
+
+```
+Level 2 (root):          ‖v‖ = 5.41      angle ψ = 22.4°   (range 0 to 90°)
+                        /          \
+Level 1:            R_A = 5      R_B = 2.06
+                    θ₁ = 306.9°  θ₂ = 14.0°               (range 0 to 360°)
+                    /    \        /    \
+Input:            x₁=3  x₂=−4   x₃=2  x₄=0.5
+```
+
+1. **Level 1: pair the coordinates.** `(x₁, x₂) = (3, −4)` becomes a radius `R_A = √(9 + 16) = 5` and an angle `θ₁ = atan2(−4, 3) = −53.1°`, taken as 306.9° so it falls in 0 to 360°. `(x₃, x₄) = (2, 0.5)` becomes `R_B = √4.25 = 2.06` and `θ₂ = atan2(0.5, 2) = 14.0°`.
+2. **Level 2: pair the radii.** `(R_A, R_B)` becomes the radius `√(25 + 4.25) = 5.41`, which is the norm of the whole vector, and the angle `ψ = arctan(R_B / R_A) = 22.4°`. Both radii are non-negative, so ψ is always between 0 and 90°.
+3. **Quantize the angles.** Level 1 uses 4 bits, 16 buckets of 22.5° whose centres are 11.25°, 33.75°, …: θ₁ = 306.9° falls in bucket 13 (centre 303.75°), θ₂ = 14.0° in bucket 0 (centre 11.25°). Level 2 uses 2 bits. Its four centroids come from 1-D k-means on the level-2 density (the paper builds them with k-means++), which gives 17.7°, 36.3°, 53.7° and 72.3°: ψ = 22.4° becomes 17.7°, index 0.
+
+What stays in memory: 4 + 4 + 2 = 10 bits of angle indices plus one float (5.41). The original four floats are discarded.
+
+**Decoding** runs the tree top-down with cosines and sines: `R_A ≈ 5.41·cos 17.7° = 5.15`, `R_B ≈ 5.41·sin 17.7° = 1.65`, then `v̂ = [5.15·cos 303.75°, 5.15·sin 303.75°, 1.65·cos 11.25°, 1.65·sin 11.25°] = [2.86, −4.28, 1.62, 0.32]`. The relative error is 9.7%; with the query `q = [1, −1, 1, 0]` the score is 8.76 against an exact 9.
+
+Four points the example makes concrete:
+
+* **How tight the higher levels are.** The density at level 2 is just sin 2ψ, which is broad: its standard deviation is 19.6°, against 26.0° for a uniform angle on the same range. It narrows to 14.2° at level 3 and 10.1° at level 4. The 2-bit centroids follow it: 17.7° to 72.3° at level 2, 30.0° to 60.0° at level 4.
+* **One radius per block, not per vector.** In practice the recursion stops after L = 4 levels, so each block of 16 coordinates keeps one 16-bit radius. A block stores 8 angles × 4 bits + 4 × 2 + 2 × 2 + 1 × 2 = 46 bits plus the radius: 62 bits for 16 numbers, or **3.875 bits per coordinate**, about 4.1x smaller than 16-bit floats. A 128-dimensional head has 8 such radii. The only other state is the small codebook of centroids, shared by every vector rather than stored per block. The abstract's "over 4.2x" is the paper's own headline; it is slightly above what this 3.875-bit accounting gives, and the paper keeps generated tokens in full precision in its LongBench runs.
+* **The codebook is fitted once, not per vector.** The angle distribution is known in theory, but the paper fits the centroids by 1-D k-means++ on observed angles, either online (once per prompt and layer, during prefill) or offline (one codebook for all prompts, layers and heads). The online variant scores slightly better.
+* **What the rotation buys.** For the analysis the paper multiplies by a matrix with i.i.d. Gaussian entries; in the implementation it uses a random rotation shared by all layers, heads, keys and values. Fast random Hadamard transforms play the same role in other work, but they are not what PolarQuant used. In a check on heavy-tailed synthetic vectors (d = 128, 2,000 vectors, the codebooks above), the relative squared error was 3.2% with the rotation and 13.6% without it.
 
 **Results.** Over **4.2x** KV-cache compression with the best quality scores among the methods compared on long-context benchmarks.
 
-**Role in TurboQuant.** Google's blog describes TurboQuant's first stage as "PolarQuant-style" compression. In the TurboQuant paper itself, that stage is the simpler rotation plus a per-coordinate scalar quantizer (section 3), which plays the same role: making the distribution known in advance.
+**Role in TurboQuant.** Google's blog describes TurboQuant's first stage as "PolarQuant-style" compression. In the TurboQuant paper itself, that stage keeps PolarQuant's principle (rotate first, so the distribution is known in advance and no per-block scales are needed) but drops the polar transform: it quantizes each rotated coordinate with a scalar Lloyd-Max quantizer (section 3), which is simpler and has a proven distortion bound.
 
 ### 2.3 TurboQuant (April 2025)
 
