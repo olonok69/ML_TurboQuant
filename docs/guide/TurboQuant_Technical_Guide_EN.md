@@ -121,6 +121,8 @@ TurboQuant keeps steps 3 and 4 and replaces steps 1 and 2. A random rotation fir
 | Up to **8x** faster attention-logit computation with 4-bit keys on H100. | Google Research blog |
 | **2.3x to 3.7x** more KV-cache capacity in vLLM, at 66% to 80% of BF16 throughput. | vLLM blog |
 
+The LongBench and needle numbers are on different scales: the first is an average task score out of 100, the second a recall score between 0 and 1. Section 4.2 explains what each one measures.
+
 ---
 
 ## 2. Three papers, one idea
@@ -420,6 +422,8 @@ Unlike KIVI and PolarQuant in the paper's comparison, TurboQuant also quantizes 
 
 On Ministral-7B-Instruct, TurboQuant at 2.5 bits scores 49.62 against 49.89 for the full cache.
 
+> **What LongBench-E is and what the score means.** LongBench (Bai et al., THUDM, 2023) is a long-context benchmark of question answering, summarization, few-shot, synthetic and code-completion tasks. LongBench-E is its length-balanced subset: 13 English and code datasets, resampled so that inputs of 0–4k, 4k–8k and 8k+ tokens appear in comparable numbers. That makes it suited to compression methods, whose damage can grow with context length. Every task is scored automatically from 0 to 100 with its own metric: F1 word overlap with the reference answer for most QA tasks, ROUGE-L for summaries, accuracy for classification and the synthetic tasks, and edit similarity for code. The **Average** is therefore a mean quality score, not a percentage of correct answers, and it only means something next to the full cache on the same model. It is not the mean of the six category columns in the paper's Table 1 (that would be about 48.5), so it is presumably the average over the individual datasets, which the paper does not list. A tied average is not a tie everywhere: at 3.5 bits TurboQuant is slightly lower than the full cache on single-document QA (45.01 vs 45.29) and slightly higher on multi-document QA (45.31 vs 45.16). The paper's text says LongBench-E while the Table 1 caption says LongBench-V1.
+
 **Needle in a haystack** (Llama-3.1-8B-Instruct, documents of 4k to 104k tokens, 25% of the full cache memory):
 
 | Method | Score |
@@ -433,12 +437,16 @@ On Ministral-7B-Instruct, TurboQuant at 2.5 bits scores 49.62 against 49.89 for 
 
 Token-eviction methods (SnapKV, PyramidKV) drop tokens they guess are unimportant and therefore miss needles. Quantization keeps every token, just with fewer bits.
 
+> **What Needle in a Haystack is and what the score means.** The test (Kamradt, 2023) hides one sentence, the *needle*, at a chosen depth of a long filler document, the *haystack*, and asks the model to retrieve it. The paper follows the setup of Fu et al. (2024): document lengths from 4k to 104k tokens and needle depths from 0% to 100% of the document, which together form the heatmap grid in its Figure 4. Each cell gets a score from 0 to 1, and the number in the table is the average over the whole grid. The paper calls it a recall score, "how accurately the model retrieves the hidden sentence", without giving the formula. In the evaluation code most KV-cache papers reuse (KVCache-Factory, from the PyramidKV authors), each answer is scored by its word overlap with the needle (ROUGE-1), so a partly correct answer earns partial credit. Read 0.997 as "the answers reproduced the needle almost perfectly across all lengths and depths", not as "99.7% of tests passed". The memory condition matters as much as the score: every compressed method ran with 25% of the full cache. Demo 1 scores more strictly: a run counts as found only if the exact code appears in the answer (section 6.1).
+
 ### 4.3 In production
 
 * **Google Research blog:** up to **8x** faster attention-logit computation with 4-bit TurboQuant keys versus 32-bit keys on H100, and at least 6x smaller KV memory on needle tasks with 3-bit keys.
 * **vLLM** (0.20.2 and later) ships fused kernels: `--kv-cache-dtype turboquant_4bit_nc`, `turboquant_k8v4`, `turboquant_k3v4_nc`, `turboquant_3bit_nc`. vLLM's blog reports **2.3x to 3.7x** more KV-cache capacity at **66% to 80%** of BF16 throughput. The aggressive 3-bit variants lose up to about 20 points on hard math and coding tasks; FP8 remains the throughput-neutral option.
 
 The honest summary: **the reliable win is capacity** (longer context, more concurrent requests per GPU). Speed depends on having fused kernels, and the most aggressive settings need evaluation on your own tasks.
+
+> **What a fused kernel is.** A *kernel* is a function that runs on the GPU. Without fusion, a compressed cache needs one kernel that unpacks the codes and writes full-precision keys and values back to GPU memory, then the usual attention kernel that reads them again. The decompressed copy costs as much memory traffic as an uncompressed cache, plus the unpacking, so decoding gets slower. A *fused* kernel does both jobs in one pass: it reads the packed codes, rebuilds each key and value in on-chip registers, and computes ⟨q, k⟩, the softmax and the weighted sum of values without ever storing the decompressed cache. With TurboQuant it can even skip rebuilding the keys: rotate the query once and score it directly against the codebook values (section 3.4). Decoding is limited by memory traffic (section 1.2), so reading 3 or 4 bits per number instead of 16 is where the speedup comes from. `turboquant_core.py` is not fused, which is why it saves memory but decodes more slowly than FP16.
 
 ### 4.4 What compression buys
 
@@ -796,11 +804,12 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 | **Attention** | The transformer operation that compares the current query with all cached keys and mixes the cached values. |
 | **Prefill / decode** | Processing the prompt in one pass / generating tokens one at a time. |
 | **Outlier channel** | A coordinate of keys or values with much larger magnitude than the others. |
-| **Fused kernel** | A GPU routine that does several steps (here: unpacking and attention) in one pass without writing intermediate results to memory. |
+| **Fused kernel** | A GPU routine that does several steps (here: unpacking and attention) in one pass without writing intermediate results to memory. See section 4.3. |
 | **Perplexity** | How surprised a language model is by a text; lower is better. |
 | **KL divergence** | How different two probability distributions are; here, the compressed model's next-token distribution versus the FP16 model's. |
-| **Needle in a haystack** | A test that hides a fact in a long document and asks the model to retrieve it. |
-| **LongBench** | A benchmark of long-context tasks (QA, summarization, code and more). |
+| **Needle in a haystack** | A test that hides a fact in a long document and asks the model to retrieve it. Its score (0 to 1) is a recall score averaged over document lengths and needle depths. See section 4.2. |
+| **LongBench** | A benchmark of long-context tasks (QA, summarization, code and more), each scored from 0 to 100. |
+| **LongBench-E** | The length-balanced subset of LongBench, with comparable numbers of inputs at 0–4k, 4k–8k and 8k+ tokens. See section 4.2. |
 | **Product quantization (PQ)** | A trained vector-compression method: split vectors into sub-vectors and replace each with the nearest of a set of k-means centroids. See section 5.4. |
 | **RaBitQ** | A randomized binary quantization method for vector search; one of the paper's baselines. |
 | **Recall@1@k** | Fraction of queries whose true nearest neighbour appears in the top k results. |
