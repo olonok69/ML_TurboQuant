@@ -653,6 +653,14 @@ Nothing in the model changes. Each layer gets its own random rotation (seed = la
 
 Exact float32 search ran at 857 QPS.
 
+> **How to read the columns.** All three are computed in `vector_search_demo.py` (section 2) against the exact answer, which is the top 100 neighbours by inner product from an uncompressed FAISS `IndexFlatIP` (the vectors are normalized, so this is cosine similarity).
+>
+> * **QPS (queries per second)** is speed: the 1,000 queries are sent as one batch asking for the top 64 results each, and QPS = 1,000 / seconds that call took, on the same 4 CPU threads for every method. Higher is faster. Build time is not included, and turbovec gets one small warm-up search first.
+> * **R1@1** is the paper's Recall@1@k with k = 1: the fraction of queries where the first result returned is the true nearest neighbour. 0.944 means the top hit was right for 944 of the 1,000 queries. The paper's 1@k curves (and R1@4, R1@16, R1@64 in the notebook) relax this to "the true nearest neighbour appears anywhere in the first k results".
+> * **10@10** compares lists, not just the top hit: for each query, how many of the true top 10 appear in the returned top 10, divided by 10, averaged over all queries. 0.951 means that on average 9.5 of the 10 true neighbours were found, in any order.
+>
+> Recall and QPS trade off against each other, so compare methods at the same bit budget: turbovec at 4 bits is both more accurate and faster here, which is the unusual part.
+
 **Three messages from this run:**
 
 1. **More recall with no training.** At 4 bits, turbovec ranks the true nearest neighbour first 94% of the time against 82% for PQ, and PQ needed 83 seconds of k-means first.

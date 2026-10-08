@@ -654,6 +654,14 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 
 La búsqueda exacta en float32 alcanzó 857 QPS.
 
+> **Cómo leer las columnas.** Las tres se calculan en `vector_search_demo.py` (sección 2) contra la respuesta exacta, que son los 100 vecinos más cercanos por producto interno según un `IndexFlatIP` de FAISS sin comprimir (los vectores están normalizados, así que equivale a la similitud coseno).
+>
+> * **QPS (queries per second, consultas por segundo)** es la velocidad: las 1.000 consultas se lanzan en un solo lote pidiendo los 64 primeros resultados de cada una, y QPS = 1.000 / segundos que tardó esa llamada, con los mismos 4 hilos de CPU para todos los métodos. Cuanto más alto, más rápido. No incluye el tiempo de construcción, y turbovec hace antes una pequeña búsqueda de calentamiento.
+> * **R1@1** es el Recall@1@k del artículo con k = 1: la fracción de consultas en las que el primer resultado devuelto es el vecino más cercano real. 0,944 significa que el primer resultado acertó en 944 de las 1.000 consultas. Las curvas 1@k del artículo (y R1@4, R1@16 y R1@64 en el notebook) relajan la condición a "el vecino más cercano real aparece en algún lugar de los k primeros resultados".
+> * **10@10** compara listas, no solo el primer resultado: para cada consulta, cuántos de los 10 vecinos reales aparecen entre los 10 devueltos, dividido entre 10, y la media sobre todas las consultas. 0,951 significa que de media se encontraron 9,5 de los 10 vecinos reales, en cualquier orden.
+>
+> El recall y las QPS se compensan entre sí, así que hay que comparar métodos con el mismo presupuesto de bits: aquí turbovec a 4 bits es a la vez más preciso y más rápido, y eso es lo poco habitual.
+
 **Tres mensajes de esta ejecución:**
 
 1. **Más recall sin entrenamiento.** A 4 bits, turbovec sitúa el vecino más cercano real en primer lugar el 94 % de las veces, frente al 82 % de PQ, y PQ necesitó antes 83 segundos de k-means.
