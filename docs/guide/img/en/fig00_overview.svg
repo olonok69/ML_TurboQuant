@@ -51,13 +51,13 @@
 <text x="538.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">computed once for that bell</text>
 <text x="538.0" y="284.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">curve.</text>
 <line x1="545.0" y1="156.0" x2="545.0" y2="202.0" stroke="#B4521A" stroke-width="2"/>
-<text x="545.0" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">00</text>
+<text x="545.0" y="218.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">00</text>
 <line x1="599.6" y1="156.0" x2="599.6" y2="202.0" stroke="#B4521A" stroke-width="2"/>
-<text x="599.6" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">01</text>
+<text x="599.6" y="218.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">01</text>
 <line x1="646.4" y1="156.0" x2="646.4" y2="202.0" stroke="#B4521A" stroke-width="2"/>
-<text x="646.4" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">10</text>
+<text x="646.4" y="218.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">10</text>
 <line x1="701.0" y1="156.0" x2="701.0" y2="202.0" stroke="#B4521A" stroke-width="2"/>
-<text x="701.0" y="218.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">11</text>
+<text x="701.0" y="218.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">11</text>
 <line x1="540.0" y1="180.0" x2="706.0" y2="180.0" stroke="#5F6979" stroke-width="1"/>
 <circle cx="659.4" cy="180.0" r="5" fill="#2F6DB5"/>
 <line x1="728.0" y1="186.0" x2="764.0" y2="186.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
@@ -66,7 +66,7 @@
 <text x="784.0" y="236.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">b bits per number plus one</text>
 <text x="784.0" y="252.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">16-bit length. 4 bits instead</text>
 <text x="784.0" y="268.5" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">of 16 is about 4x smaller.</text>
-<text x="784.0" y="176.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">10 01 11 00 10 …</text>
-<text x="784.0" y="202.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">+ ‖x‖ (16 bit)</text>
+<text x="784.0" y="176.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">10 01 11 00 10 …</text>
+<text x="784.0" y="202.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="13" font-weight="400" fill="#D9DEE6" text-anchor="start">+ ‖x‖ (16 bit)</text>
 <text x="32.0" y="338.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#5F6979" text-anchor="start" font-style="italic">Optional stage 2 (TurboQuant_prod): spend 1 more bit on the leftover error to make similarity scores unbiased.</text>
 </svg>

@@ -38,28 +38,28 @@
 <line x1="672.0" y1="202.0" x2="702.0" y2="202.0" stroke="#0F1B2D" stroke-width="2" stroke-dasharray="2 4"/>
 <text x="710.0" y="206.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">lower bound 4⁻ᵇ (no quantizer can do</text>
 <text x="710.0" y="222.2" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">better)</text>
-<text x="672.0" y="262.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">b</text>
+<text x="672.0" y="262.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">b</text>
 <text x="732.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">4⁻ᵇ</text>
 <text x="816.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">meas.</text>
 <text x="900.0" y="262.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#5F6979" text-anchor="start">paper</text>
-<text x="672.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">1</text>
-<text x="732.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.2500</text>
-<text x="816.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.3603</text>
-<text x="900.0" y="284.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.360</text>
-<text x="672.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">2</text>
-<text x="732.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0625</text>
-<text x="816.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.1159</text>
-<text x="900.0" y="304.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.117</text>
-<text x="672.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">3</text>
-<text x="732.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0156</text>
-<text x="816.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0339</text>
-<text x="900.0" y="324.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.030</text>
-<text x="672.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">4</text>
-<text x="732.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0039</text>
-<text x="816.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0093</text>
-<text x="900.0" y="344.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.009</text>
-<text x="672.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">5</text>
-<text x="732.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0010</text>
-<text x="816.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0025</text>
-<text x="900.0" y="364.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">–</text>
+<text x="672.0" y="284.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">1</text>
+<text x="732.0" y="284.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.2500</text>
+<text x="816.0" y="284.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.3603</text>
+<text x="900.0" y="284.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.360</text>
+<text x="672.0" y="304.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">2</text>
+<text x="732.0" y="304.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0625</text>
+<text x="816.0" y="304.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.1159</text>
+<text x="900.0" y="304.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.117</text>
+<text x="672.0" y="324.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">3</text>
+<text x="732.0" y="324.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0156</text>
+<text x="816.0" y="324.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0339</text>
+<text x="900.0" y="324.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.030</text>
+<text x="672.0" y="344.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">4</text>
+<text x="732.0" y="344.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0039</text>
+<text x="816.0" y="344.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0093</text>
+<text x="900.0" y="344.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.009</text>
+<text x="672.0" y="364.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">5</text>
+<text x="732.0" y="364.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">0.0010</text>
+<text x="816.0" y="364.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="700" fill="#2F6DB5" text-anchor="start">0.0025</text>
+<text x="900.0" y="364.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#1B2433" text-anchor="start">–</text>
 </svg>
