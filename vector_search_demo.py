@@ -18,7 +18,7 @@
 #
 # **Runtime:** CPU is fine (turbovec and FAISS are CPU libraries). A GPU only speeds up the reference PyTorch scorer.
 #
-# **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 5 the vector-search use case, and section 6.2 walks through this notebook section by section.
+# **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 6 the vector-search use case, and section 7.2 walks through this notebook section by section.
 
 # %%
 import subprocess, sys, importlib

@@ -2,7 +2,7 @@
 
 **Una comprobación real de TurboQuant en dos funciones de similitud de una plataforma de documentos legales. Conclusión para ambas: no ayuda.**
 
-Este capítulo complementa la guía técnica. Las secciones 4 y 5 de la guía muestran dónde brilla TurboQuant:
+Este capítulo complementa la guía técnica. Las secciones 5 y 6 de la guía muestran dónde brilla TurboQuant:
 la caché KV y los índices vectoriales grandes. Aquí se muestra el caso contrario, que un taller necesita
 igual: cómo saber, **antes** de comprimir nada, si la compresión de vectores puede mover el problema que
 tienes. El código está en `es_bench/` en este repositorio y funciona en un portátil.
