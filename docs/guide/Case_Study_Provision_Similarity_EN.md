@@ -2,7 +2,7 @@
 
 **A real check of TurboQuant against two similarity features of a legal-documents platform. Verdict for both: it does not help.**
 
-This chapter complements the technical guide. Sections 4 and 5 there show where TurboQuant shines: the KV
+This chapter complements the technical guide. Sections 5 and 6 there show where TurboQuant shines: the KV
 cache and large vector indexes. This chapter shows the opposite case, which a workshop needs just as much:
 how to tell, **before** compressing anything, whether vector compression can move the problem you have.
 The code is in `es_bench/` in this repository and runs on a laptop.

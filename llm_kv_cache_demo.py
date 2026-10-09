@@ -14,7 +14,7 @@
 #
 # > The reference implementation stores keys and values bit-packed and dequantizes them on read. That saves memory but adds work, so it is **slower** than the FP16 cache. Production speedups need fused kernels (vLLM ships them: `--kv-cache-dtype turboquant_4bit_nc`).
 #
-# **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 4 the KV-cache use case, and section 6.1 walks through this notebook section by section.
+# **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 5 the KV-cache use case, and section 7.1 walks through this notebook section by section.
 
 # %%
 # !pip -q install -U "transformers>=5.0,<6" accelerate datasets matplotlib pandas
