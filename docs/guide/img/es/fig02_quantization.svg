@@ -16,22 +16,22 @@
 <line x1="880.0" y1="185.0" x2="880.0" y2="195.0" stroke="#5F6979" stroke-width="1"/>
 <text x="880.0" y="214.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#5F6979" text-anchor="middle">2</text>
 <circle cx="215.0" cy="190.0" r="9" fill="#B4521A"/>
-<text x="215.0" y="170.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">00</text>
+<text x="215.0" y="170.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">00</text>
 <circle cx="414.5" cy="190.0" r="9" fill="#B4521A"/>
-<text x="414.5" y="170.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">01</text>
+<text x="414.5" y="170.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">01</text>
 <circle cx="585.5" cy="190.0" r="9" fill="#B4521A"/>
-<text x="585.5" y="170.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">10</text>
+<text x="585.5" y="170.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">10</text>
 <circle cx="785.0" cy="190.0" r="9" fill="#B4521A"/>
-<text x="785.0" y="170.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">11</text>
+<text x="785.0" y="170.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="middle">11</text>
 <text x="500.0" y="138.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#B4521A" text-anchor="middle">2 bits = 4 valores permitidos</text>
 <circle cx="634.9" cy="190.0" r="7" fill="#2F6DB5"/>
 <path d="M634.9,202 C634.9,242 585.5,242 585.5,204" stroke="#2F6DB5" fill="none" stroke-width="2"/>
 <text x="610.2" y="252.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#2F6DB5" text-anchor="middle">error de redondeo</text>
 <rect x="32.0" y="96.0" width="230.0" height="52.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="44.0" y="118.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="start">Número original (16 bits)</text>
-<text x="44.0" y="140.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="16" font-weight="600" fill="#2F6DB5" text-anchor="start">0,7109375</text>
+<text x="44.0" y="140.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="16" font-weight="600" fill="#2F6DB5" text-anchor="start">0,7109375</text>
 <rect x="738.0" y="96.0" width="230.0" height="52.0" rx="10" fill="#FBE9DC" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="750.0" y="118.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="start">Código guardado: 2 bits</text>
-<text x="750.0" y="140.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="16" font-weight="700" fill="#B4521A" text-anchor="start">10</text>
+<text x="750.0" y="140.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="16" font-weight="700" fill="#B4521A" text-anchor="start">10</text>
 <text x="32.0" y="296.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#1B2433" text-anchor="start">Más bits dan más valores permitidos y menos error. Cada bit extra divide el error cuadrático por unas 4.</text>
 </svg>

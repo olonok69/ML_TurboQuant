@@ -20,7 +20,7 @@
 <text x="32.0" y="324.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">128k tokens, TurboQuant 3,5 bits</text>
 <rect x="270.0" y="308.0" width="82.5" height="24.0" rx="4" fill="#3C8C5A"/>
 <text x="360.5" y="326.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#1B2433" text-anchor="start">3,75 GB</text>
-<text x="32.0" y="372.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="start">128 KB/token = 32 layers × 8 KV heads × 128 dims × (K+V) × 2 bytes</text>
+<text x="32.0" y="372.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#5F6979" text-anchor="start">128 KB/token = 32 layers × 8 KV heads × 128 dims × (K+V) × 2 bytes</text>
 <rect x="700.0" y="96.0" width="268.0" height="296.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="716.0" y="124.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#0F1B2D" text-anchor="start">Índice vectorial: 1 millón de</text>
 <text x="716.0" y="142.8" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#0F1B2D" text-anchor="start">embeddings de OpenAI (1536-d)</text>

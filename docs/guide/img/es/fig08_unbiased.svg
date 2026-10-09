@@ -6,22 +6,22 @@
 <text x="32.0" y="70.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="400" fill="#5F6979" text-anchor="start">b−1 bits para la etapa MSE y luego un bit de signo QJL por coordenada sobre lo que queda.</text>
 <rect x="32.0" y="92.0" width="196.0" height="100.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="46.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Etapa MSE, b−1 bits</text>
-<text x="46.0" y="137.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">x̃_mse = Q_mse(x)</text>
+<text x="46.0" y="137.5" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">x̃_mse = Q_mse(x)</text>
 <line x1="230.0" y1="142.0" x2="248.0" y2="142.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
 <rect x="250.0" y="92.0" width="196.0" height="100.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="264.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">Residuo</text>
-<text x="264.0" y="137.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">r = x − x̃_mse </text>
-<text x="264.0" y="153.8" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">(pequeño)</text>
+<text x="264.0" y="137.5" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">r = x − x̃_mse </text>
+<text x="264.0" y="153.8" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">(pequeño)</text>
 <line x1="448.0" y1="142.0" x2="466.0" y2="142.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
 <rect x="468.0" y="92.0" width="196.0" height="100.0" rx="10" fill="#FDFCF9" stroke="#E2DFD6" stroke-width="1.5"/>
 <text x="482.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">QJL, 1 bit</text>
-<text x="482.0" y="137.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">signos = sign(S · r),</text>
-<text x="482.0" y="153.8" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">guardar ‖r‖</text>
+<text x="482.0" y="137.5" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">signos = sign(S · r),</text>
+<text x="482.0" y="153.8" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#3A4556" text-anchor="start">guardar ‖r‖</text>
 <line x1="666.0" y1="142.0" x2="684.0" y2="142.0" stroke="#B4521A" stroke-width="2.5" marker-end="url(#arr)"/>
 <rect x="686.0" y="92.0" width="300.0" height="100.0" rx="10" fill="#0F1B2D"/>
 <text x="700.0" y="116.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#F2A35E" text-anchor="start">Estimación insesgada</text>
-<text x="700.0" y="137.5" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">⟨y, x̃_mse⟩ + √(π/2)/d · ‖r‖ ·</text>
-<text x="700.0" y="153.8" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">⟨S·y, signos⟩</text>
+<text x="700.0" y="137.5" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">⟨y, x̃_mse⟩ + √(π/2)/d · ‖r‖ ·</text>
+<text x="700.0" y="153.8" font-family="Consolas, Courier New, Menlo, monospace" font-size="12.5" font-weight="400" fill="#D9DEE6" text-anchor="start">⟨S·y, signos⟩</text>
 <text x="32.0" y="230.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F1B2D" text-anchor="start">Error del producto interno a 2 bits, 20.000 vectores (medido con turboquant_core.py)</text>
 <rect x="60.5" y="460.0" width="10.0" height="0.0" rx="0" fill="#2F6DB5" opacity="0.6"/>
 <rect x="71.5" y="459.8" width="10.0" height="0.2" rx="0" fill="#2F6DB5" opacity="0.6"/>

@@ -27,7 +27,7 @@ ORANGE, PEACH, PEACHBG = "#B4521A", "#F2A35E", "#FBE9DC"
 CREAM, CARD, BORDER = "#F6F5F0", "#FDFCF9", "#E2DFD6"
 BLUE, BLUEBG, GREY = "#2F6DB5", "#DCE7F5", "#C9CED6"
 FONT = "IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif"
-MONO = "JetBrains Mono, Consolas, Menlo, monospace"
+MONO = "Consolas, Courier New, Menlo, monospace"
 
 
 # ---------------------------------------------------------------------------------------

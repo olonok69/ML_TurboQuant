@@ -136,7 +136,7 @@
 <text x="56.0" y="184.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">32 outlier channels × 3 bits</text>
 <rect x="362.0" y="172.0" width="16.0" height="14.0" rx="2" fill="#2F6DB5"/>
 <text x="386.0" y="184.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="400" fill="#1B2433" text-anchor="start">96 regular channels × 2 bits</text>
-<text x="32.0" y="224.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">(32·3 + 96·2) / 128 = 2.25 bits of codes</text>
-<text x="32.0" y="250.0" font-family="JetBrains Mono, Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="start">+ two fp16 norms (32 bits / 128) = 2.5 bits per channel</text>
+<text x="32.0" y="224.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="600" fill="#0F1B2D" text-anchor="start">(32·3 + 96·2) / 128 = 2.25 bits of codes</text>
+<text x="32.0" y="250.0" font-family="Consolas, Courier New, Menlo, monospace" font-size="15" font-weight="700" fill="#B4521A" text-anchor="start">+ two fp16 norms (32 bits / 128) = 2.5 bits per channel</text>
 <text x="32.0" y="284.0" font-family="IBM Plex Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5F6979" text-anchor="start" font-style="italic">3.5-bit setting in the demo: 64 channels × 4 bits + 64 × 3 bits (+ norms = 3.75 measured)</text>
 </svg>
