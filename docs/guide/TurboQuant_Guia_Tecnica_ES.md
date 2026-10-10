@@ -365,11 +365,28 @@ Tomemos una clave de 4 dimensiones (las claves reales tienen de 64 a 128 dimensi
 
 Lo que queda en memoria para esta clave: 3 bits más un número de coma flotante (5,41). Los cuatro números originales se descartan.
 
-**Cómo se usan los bits.** Llega una consulta, por ejemplo `q = [1, −1, 1, 0]`; la puntuación exacta es `⟨q, k⟩ = 3 + 4 + 2 + 0 = 9`. La consulta se proyecta con la misma *S* pero **no** se cuantiza: `S·q = [1,5, −0,7, −0,8]`. El estimador de QJL es
+**Cómo se usan los bits.** Llega una consulta, por ejemplo `q = [1, −1, 1, 0]`. Para puntuarla solo tenemos los 3 bits y la norma de la clave; los pasos siguientes muestran de dónde sale cada número.
 
-`⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+5. **Puntuación exacta (la referencia).** El producto escalar multiplica `q` y `k` coordenada a coordenada y suma los resultados:
 
-Aquí `⟨S·q, sign(S·k)⟩ = 1,5·(+1) + (−0,7)·(−1) + (−0,8)·(−1) = 3,0`, así que la estimación es `1,2533 / 3 · 5,41 · 3,0 ≈ 6,78`, frente a un valor real de 9.
+   `⟨q, k⟩ = 1·3 + (−1)·(−4) + 1·2 + 0·0,5 = 3 + 4 + 2 + 0 = 9`
+
+   El segundo término vale +4 porque los dos signos negativos se cancelan, y el último vale 0 porque la consulta no tiene componente en la cuarta coordenada. Este 9 es el valor que el estimador intenta aproximar sin tener `k` en memoria.
+6. **Proyectar la consulta.** La consulta se proyecta con la misma *S* pero **no** se cuantiza. `S·q`, fila a fila (como en el paso 3, pero con `q` en lugar de `k`):
+   * 0,5·1 + (−0,2)·(−1) + 0,8·1 + (−0,1)·0 = 0,5 + 0,2 + 0,8 + 0 = **1,5**
+   * (−0,9)·1 + 0,1·(−1) + 0,3·1 + 0,7·0 = −0,9 − 0,1 + 0,3 + 0 = **−0,7**
+   * 0,2·1 + 0,6·(−1) + (−0,4)·1 + (−0,5)·0 = 0,2 − 0,6 − 0,4 + 0 = **−0,8**
+
+   Así que `S·q = [1,5, −0,7, −0,8]`.
+7. **Combinar con los bits.** El estimador de QJL es
+
+   `⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+
+   y se calcula término a término:
+   * **`⟨S·q, sign(S·k)⟩`.** Cada proyección de la consulta se multiplica por el signo guardado de su misma fila (los bits `100` son +1, −1, −1) y se suman: `1,5·(+1) + (−0,7)·(−1) + (−0,8)·(−1) = 1,5 + 0,7 + 0,8 = 3,0`. En las tres filas la proyección de la consulta tiene el mismo signo que la de la clave, así que los tres términos suman; una fila con signos opuestos restaría.
+   * **`√(π/2) / m`.** `√(π/2) = √1,5708 ≈ 1,2533`, y al dividir por m = 3 queda `≈ 0,4178`.
+   * **`‖k‖`.** Es la norma guardada en el paso 1: `5,41`.
+   * **Producto.** `0,4178 · 5,41 · 3,0 ≈ 6,78`, frente a un valor real de 9.
 
 Tres cosas que el ejemplo deja claras:
 
