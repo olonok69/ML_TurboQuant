@@ -365,11 +365,28 @@ Take a 4-dimensional key (real keys have 64 to 128 dimensions per head) and proj
 
 What stays in memory for this key: 3 bits plus one float (5.41). The original four floats are discarded.
 
-**Using the bits.** A query arrives, say `q = [1, −1, 1, 0]`; the exact score is `⟨q, k⟩ = 3 + 4 + 2 + 0 = 9`. The query is projected with the same *S* but **not** quantized: `S·q = [1.5, −0.7, −0.8]`. QJL's estimator is
+**Using the bits.** A query arrives, say `q = [1, −1, 1, 0]`. To score it we only have the key's 3 bits and its norm; the steps below show where each number comes from.
 
-`⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+5. **Exact score (the reference).** The dot product multiplies `q` and `k` coordinate by coordinate and adds the results:
 
-Here `⟨S·q, sign(S·k)⟩ = 1.5·(+1) + (−0.7)·(−1) + (−0.8)·(−1) = 3.0`, so the estimate is `1.2533 / 3 · 5.41 · 3.0 ≈ 6.78`, against a true value of 9.
+   `⟨q, k⟩ = 1·3 + (−1)·(−4) + 1·2 + 0·0.5 = 3 + 4 + 2 + 0 = 9`
+
+   The second term is +4 because the two minus signs cancel, and the last term is 0 because the query has no component along the fourth coordinate. This 9 is the value the estimator tries to recover without having `k` in memory.
+6. **Project the query.** The query is projected with the same *S* but **not** quantized. `S·q`, row by row (as in step 3, with `q` in place of `k`):
+   * 0.5·1 + (−0.2)·(−1) + 0.8·1 + (−0.1)·0 = 0.5 + 0.2 + 0.8 + 0 = **1.5**
+   * (−0.9)·1 + 0.1·(−1) + 0.3·1 + 0.7·0 = −0.9 − 0.1 + 0.3 + 0 = **−0.7**
+   * 0.2·1 + 0.6·(−1) + (−0.4)·1 + (−0.5)·0 = 0.2 − 0.6 − 0.4 + 0 = **−0.8**
+
+   So `S·q = [1.5, −0.7, −0.8]`.
+7. **Combine with the bits.** QJL's estimator is
+
+   `⟨q, k⟩ ≈ √(π/2) / m · ‖k‖ · ⟨S·q, sign(S·k)⟩`
+
+   and it is computed term by term:
+   * **`⟨S·q, sign(S·k)⟩`.** Each query projection is multiplied by the stored sign of the same row (the bits `100` are +1, −1, −1) and the results are added: `1.5·(+1) + (−0.7)·(−1) + (−0.8)·(−1) = 1.5 + 0.7 + 0.8 = 3.0`. In all three rows the query's projection has the same sign as the key's, so all three terms add; a row with opposite signs would subtract.
+   * **`√(π/2) / m`.** `√(π/2) = √1.5708 ≈ 1.2533`, and dividing by m = 3 gives `≈ 0.4178`.
+   * **`‖k‖`.** The norm stored in step 1: `5.41`.
+   * **Product.** `0.4178 · 5.41 · 3.0 ≈ 6.78`, against a true value of 9.
 
 Three points the example makes concrete:
 
