@@ -24,6 +24,22 @@
 # > The reference implementation stores keys and values bit-packed and dequantizes them on read. That saves memory but adds work, so it is **slower** than the FP16 cache. Production speedups need fused kernels (vLLM ships them: `--kv-cache-dtype turboquant_4bit_nc`).
 #
 # **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 5 the KV-cache use case, and section 7.1 walks through this notebook section by section.
+#
+# ## Compression methods in this notebook
+# Every configuration below compresses the **keys and values of each attention head separately**, one 128-number vector per token, head and layer. "Bits/ch" is the measured storage per channel including norms and scales (the `bits_per_channel` column). Section numbers say where each method is used.
+#
+# | Configuration (as named in the tables) | How it compresses one 128-d vector | Stored per vector | Bits/ch | Sections |
+# |---|---|---|---|---|
+# | **Uncompressed cache (baseline)** | Nothing: Hugging Face's `DynamicCache` keeps keys and values in FP16. | 128 × 16 bits | 16 | 3–6 |
+# | **TurboQuant 4-bit / 3-bit / 2-bit** (MSE, the paper's Algorithm 1) | Stores the vector's length, scales it to length 1, multiplies it by a random rotation (a fixed seed per layer), then replaces each of the 128 coordinates with the nearest of 2^b Lloyd-Max centroids. The rotation makes every coordinate follow the same known distribution, so the codebook is computed once and needs no calibration data. | b-bit code per coordinate + FP16 norm | b + 0.125 (4.125, 3.125, 2.125) | 1 (b = 1 to 5), 3, 4, 5 |
+# | **TurboQuant 3.5-bit (outlier split)** | The paper's outlier split: the 64 channels with the largest mean magnitude on the first block of tokens get a 4-bit TurboQuant, the other 64 a 3-bit one. Each half has its own rotation and norm. | 64 × 4 + 64 × 3 bits + 2 FP16 norms | 3.75 (3.5 for the codes alone) | 3, 5 |
+# | **TurboQuant 2.5-bit (outlier split)** | Same idea: 32 outlier channels at 3 bits, 96 channels at 2 bits. The paper calls it 2.5 bits. | 32 × 3 + 96 × 2 bits + 2 FP16 norms | 2.5 (2.25 for the codes alone) | 3, 4, 5, 6 |
+# | **TurboQuant_prod 3-bit keys (MSE 2b + QJL 1b)** (the paper's Algorithm 2) | Keys: a 2-bit TurboQuant, then a 1-bit QJL sketch of what it missed (the sign of each coordinate of a random projection of the residual) plus the residual's length. This makes query·key products unbiased, at the cost of more variance. Values use a plain 3-bit TurboQuant. | keys: 2-bit codes + 1-bit signs + 2 FP16 norms; values: 3-bit codes + norm | 3.19 | 1 (as "prod"), 3 |
+# | **INT4 / INT3 / INT2 + scale/zero per 32 ch** (baseline, as in KIVI and HF `QuantizedCache`) | Splits the 128 channels into 4 groups of 32. In each group, maps the range [min, max] onto 2^b evenly spaced levels and stores an FP16 scale and zero point for the group. No rotation and no fixed codebook. | b-bit code per channel + 4 × (scale, zero) in FP16 | b + 1 (5, 4, 3) | 3 (all three), 4 (INT2), 5 (INT4, INT2) |
+#
+# **Mentioned but not run here**
+# * **FP8 KV cache** and vLLM's fused TurboQuant modes (`turboquant_4bit_nc`, `turboquant_3bit_nc`, `turboquant_k8v4`, `turboquant_k3v4_nc`), in section 6. In vLLM's naming, `k8v4` means 8-bit keys and 4-bit values, and `_nc` adds a norm correction that rescales each reconstructed vector back to its stored length (`renorm=True` in `turboquant_core.py` does the same).
+# * **Key-bias correction** (`RoPEKeyBias` in `turboquant_core.py`) is not a compressor: for models whose `k_proj` has a bias, such as Qwen2.5, it subtracts that constant part of the keys before quantizing and adds it back on read. Llama-3.1 has no key bias, and `make_cache` does not pass the model, so it is off in this notebook.
 
 # %%
 # Installs what Colab lacks; transformers must be v5 for the custom cache.

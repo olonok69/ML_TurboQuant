@@ -19,6 +19,22 @@
 # **Runtime:** CPU is fine (turbovec and FAISS are CPU libraries). A GPU only speeds up the reference PyTorch scorer.
 #
 # **Companion reading:** the workshop guide (`docs/guide/TurboQuant_Technical_Guide_EN.md` in the repository; Spanish version `TurboQuant_Guia_Tecnica_ES.md`). Section 3 explains the algorithm, section 6 the vector-search use case, and section 7.2 walks through this notebook section by section.
+#
+# ## The 13 compressed indexes in this notebook
+# The results table and the plots in section 6 show 14 rows: the exact index plus 13 compressed ones, each at 2 and/or 4 bits per dimension. Sizes are for 1536-d vectors, where float32 takes 6,144 bytes.
+#
+# | Method (as named in the results) | How it compresses a vector | Training | Bytes per vector (2-bit / 4-bit) |
+# |---|---|---|---|
+# | **Exact float32 (FlatIP)** | No compression. FAISS `IndexFlatIP` compares the query with every vector; its top 100 is the ground truth for all recall numbers. | none | 6,144 |
+# | **TurboQuant_mse 2-bit / 4-bit (PyTorch)** | This repository's `turboquant_core.py`, Algorithm 1: store the vector's length, rotate the unit vector with a fixed random rotation, replace each coordinate with the nearest of 2^b Lloyd-Max centroids. The query is rotated once and scored against the decoded codes. | none | 386 / 770 (codes + FP16 norm) |
+# | **TurboQuant_prod 2-bit / 4-bit (PyTorch)** | Algorithm 2: a (b−1)-bit MSE stage plus a 1-bit QJL sketch of the residual and the residual's length, so inner products are unbiased. Better for estimating scores, usually worse for ranking. | none | 388 / 772 |
+# | **turbovec 2-bit / 4-bit** | The same TurboQuant algorithm (rotation + fixed codebook), written in Rust with SIMD scoring kernels (AVX2, AVX-512, NEON). | none | 396 / 789 (codes + norm + index data) |
+# | **FAISS PQ 2-bit / 4-bit (LUT256)** | Product Quantization, the paper's baseline: splits the vector into sub-vectors (4 dimensions each at 2 bits, 2 at 4 bits) and replaces each with the nearest of 256 centroids learned by k-means, so each sub-vector costs one byte. Search uses a 256-entry lookup table per sub-vector. | k-means on 25k vectors | 384 / 768 |
+# | **FAISS PQ-FastScan 2-bit / 4-bit** | Product Quantization with 16 centroids per sub-vector (4-bit codes), so the lookup tables fit in SIMD registers and search is much faster. Sub-vectors have 2 dimensions at 2 bits and 1 dimension at 4 bits. | k-means on 25k vectors | 384 / 768 |
+# | **FAISS RaBitQ 2-bit / 4-bit** | Centres the data on its mean, applies a random rotation and quantizes each coordinate to b bits, plus a few correction factors per vector that make the distance estimate unbiased. The other baseline in the paper. | light (the data mean) | 404 / 788 (codes + 20 bytes of factors) |
+# | **FAISS SQ 4-bit (per-dim min/max)** | Scalar quantization: for each of the 1536 dimensions, learns the min and max over the data and maps that range onto 16 evenly spaced levels. No rotation. | min/max per dimension | – / 768 |
+#
+# **Not a separate index:** section 8 takes turbovec 4-bit's top 100 candidates and re-scores them with the float32 vectors (two-stage search). It changes the ranking, not the stored codes.
 
 # %% [markdown]
 # ### Environment Setup
@@ -524,17 +540,17 @@ except Exception as e:
 #
 # | Rank | Method / Configuration | Family | Bits/Dim | QPS | Recall @ 1 | Compression | Indexing Build Time |
 # | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-# | **1** | `turbovec 2-bit` | `turboquant` | 2 | **305** | 0.892 | 15.5x | 3.25s |
-# | **2** | `FAISS PQ-FastScan 2-bit` | `pq` | 2 | **246** | 0.882 | 16.0x | 16.15s |
-# | **3** | `Exact float32 (FlatIP)` | `exact` | 32 | **180** | 1.000 | 1.0x | 0.00s (No build) |
-# | **4** | `FAISS PQ-FastScan 4-bit` | `pq` | 4 | **180** | 0.959 | 8.0x | 49.32s |
-# | **5** | `turbovec 4-bit` | `turboquant` | 4 | **126** | 0.971 | 7.8x | 2.37s |
+# | **1** | `turbovec 2-bit` | `turboquant` | 2 | **357** | 0.892 | 15.5x | 3.03s |
+# | **2** | `FAISS PQ-FastScan 2-bit` | `pq` | 2 | **352** | 0.882 | 16.0x | 16.12s |
+# | **3** | `turbovec 4-bit` | `turboquant` | 4 | **189** | 0.971 | 7.8x | 3.65s |
+# | **4** | `FAISS PQ-FastScan 4-bit` | `pq` | 4 | **161** | 0.959 | 8.0x | 46.44s |
+# | **5** | `Exact float32 (FlatIP)` | `exact` | 32 | **155** | 1.000 | 1.0x | 0.00s (No build) |
 #
 # #### 2. Key Analysis & Insights
 #
-# * **SIMD Hardware Acceleration is King:** The fastest search engine evaluated is **`turbovec 2-bit` (305 QPS)**. By utilizing custom compiled Rust SIMD register lookups, it outperforms all other quantized baselines (including FAISS's highly optimized PQ-FastScan registers) while achieving a near-zero index build time ($3.25$ seconds) with zero training phase.
-# * **The Index Build Time Bottleneck:** Standard Product Quantization (`FAISS PQ-FastScan`) achieves high operational throughput but requires a computationally heavy training phase via k-means. For example, building the `FAISS PQ-FastScan 4-bit` index takes **$49.32$ seconds** compared to only **$2.37$ seconds** for `turbovec 4-bit`—making `turbovec` over **20x faster to index** with superior retrieval accuracy (0.971 vs 0.959 Recall@1).
-# * **Pure Python vs. Compiled Kernels:** The reference PyTorch implementations (`TurboQuant_mse 2-bit`) perform well mathematically but are bounded by Python loop interpreter overheads (~$70$ QPS), highlighting why compiled Rust/C++ SIMD layers (such as `turbovec`) are critical for real-world high-throughput production deployment.
+# * **SIMD kernels set the speed:** The fastest configuration is **`turbovec 2-bit` (357 QPS)**, level with FAISS's register-resident PQ-FastScan at the same budget (352 QPS) and with higher recall (0.892 vs 0.882). Both are compiled SIMD scanners; turbovec gets there with no training phase and a $3$-second build.
+# * **The index build time bottleneck:** Product Quantization needs a k-means training phase. Building the `FAISS PQ-FastScan 4-bit` index takes **$46.4$ seconds** against **$3.65$ seconds** for `turbovec 4-bit`, about **13x faster to index**, with higher recall (0.971 vs 0.959 Recall@1) and more QPS (189 vs 161). The paper's PQ baseline (LUT256) needed $817$ seconds at 4 bits.
+# * **Reference PyTorch vs. compiled kernels:** The reference PyTorch implementation (`TurboQuant_mse 2-bit`) gives the same recall as turbovec within about 0.01 but runs at ~$113$ QPS, because it decodes every vector before scoring it. That gap is why compiled kernels such as `turbovec` matter in production.
 
 # %% [markdown]
 # ### 6e. R1@4 Recall Performance Comparison
