@@ -213,8 +213,8 @@ T = {
         f13_s="Llama-3.1-8B, 8 GB of GPU memory reserved for the KV cache (a 24 GB GPU after 16 GB of weights).",
         f13_lbl=["FP16", "INT4 + scales (g=32)", "TurboQuant 4-bit", "TurboQuant 3.5-bit", "TurboQuant 2.5-bit"],
         f13_unit="tokens",
-        f14_t="Demo 2 sandbox results: recall at equal bits",
-        f14_s="Recall@1@1: how often the true nearest neighbour is ranked first. 100k vectors, 1k queries, 384-d.",
+        f14_t="Demo 2 results: recall at equal bits",
+        f14_s="Recall@1@1: how often the true nearest neighbour is ranked first. DBpedia, 100k vectors, 1k queries, 1536-d.",
         f14_b4="4 bits per dimension", f14_b2="2 bits per dimension",
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4-bit", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (no training)", f14_leg2="trained or calibrated baselines",
@@ -346,8 +346,8 @@ T = {
         f13_s="Llama-3.1-8B, 8 GB de memoria de GPU para la caché KV (una GPU de 24 GB tras 16 GB de pesos).",
         f13_lbl=["FP16", "INT4 + escalas (g=32)", "TurboQuant 4 bits", "TurboQuant 3,5 bits", "TurboQuant 2,5 bits"],
         f13_unit="tokens",
-        f14_t="Resultados de la demo 2 (sandbox): recall con los mismos bits",
-        f14_s="Recall@1@1: con qué frecuencia el vecino más cercano real queda primero. 100k vectores, 1k consultas, 384-d.",
+        f14_t="Resultados de la demo 2: recall con los mismos bits",
+        f14_s="Recall@1@1: con qué frecuencia el vecino más cercano real queda primero. DBpedia, 100k vectores, 1k consultas, 1536-d.",
         f14_b4="4 bits por dimensión", f14_b2="2 bits por dimensión",
         f14_m=["turbovec", "TurboQuant (PyTorch)", "FAISS RaBitQ", "FAISS PQ LUT256", "FAISS SQ 4 bits", "FAISS PQ-FastScan"],
         f14_leg1="TurboQuant (sin entrenamiento)", f14_leg2="baselines entrenados o calibrados",
@@ -813,8 +813,8 @@ def fig13(t, lang):
 def fig14(t, lang):
     s = Svg(1000, 430, t["f14_t"])
     header(s, t["f14_t"], t["f14_s"])
-    r4 = [0.944, 0.912, 0.871, 0.818, 0.814, 0.728]
-    r2 = [0.799, 0.715, 0.623, 0.612, None, 0.536]
+    r4 = [0.971, 0.966, 0.965, 0.965, 0.941, 0.959]   # DBpedia-1536, Colab run of 11 Oct 2026
+    r2 = [0.892, 0.879, 0.874, 0.873, None, 0.882]
     for k, (title, rr, x0) in enumerate([(t["f14_b4"], r4, 32), (t["f14_b2"], r2, 520)]):
         s.text(x0, 104, title, 15, NAVY, 700)
         row = 0

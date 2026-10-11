@@ -599,9 +599,9 @@ El nombre viene de que el conjunto de vectores que PQ puede representar es el *p
 |---|---|---|
 | Codebook | Aprendido con k-means sobre tus datos, uno por subespacio | Fijado de antemano e igual para cualquier dato (Lloyd-Max para una campana, sección 3.2) |
 | Qué se redondea | Un grupo de números (un subvector) a la vez | Un número cada vez, tras una rotación aleatoria |
-| Antes de guardar el primer vector | Entrenar: 240 s para 100k vectores de 1536 dimensiones en el artículo; 83 s en nuestra demo | Nada: 0,0013 s para indexar esos mismos 100k vectores en el artículo |
+| Antes de guardar el primer vector | Entrenar: 240 s para 100k vectores de 1536 dimensiones en el artículo; 926 s en nuestra demo (k-means con 25k vectores y después codificar) | Nada: 0,0013 s para indexar esos mismos 100k vectores en el artículo |
 | Cuando los datos cambian | Volver a entrenar y recodificar el índice | No cambia nada |
-| Recall@1@1 a 4 bits en la demo (sección 7.2) | 0,818 | 0,944 (turbovec) |
+| Recall@1@1 a 4 bits en la demo (sección 7.2) | 0,965 | 0,971 (turbovec) |
 | Puntuar una consulta | Tablas de consulta construidas para cada consulta; muy rápido con FastScan | Rotar la consulta una vez y puntuar contra los centroides (sección 3.3) |
 
 **¿Por qué un codebook fijo gana a uno aprendido?** La ventaja de PQ es que sus centroides siguen a los datos, incluidas las correlaciones entre los números de un mismo subvector. TurboQuant elimina esa necesidad: tras la rotación aleatoria todas las coordenadas siguen la misma distribución conocida y son casi independientes, así que un codebook escalar fijo ya está cerca del óptimo (sección 3.6). Además, PQ reparte sus pocos centroides según la muestra de entrenamiento, que puede alejarse de los datos que se indexan después.
@@ -612,12 +612,12 @@ El nombre viene de que el conjunto de vectores que PQ puede representar es el *p
 
 ## 7. Las demos
 
-Las dos demos son notebooks de Colab generados a partir de los scripts `.py` de este repositorio (`build_notebooks.py` los reconstruye e incrusta `turboquant_core.py` en una celda `%%writefile`, así que cada notebook funciona por sí solo).
+Las dos demos son notebooks de Colab que incrustan `turboquant_core.py` en una celda `%%writefile`, así que cada uno funciona por sí solo. Los notebooks se editan y se ejecutan en Colab y son la fuente: `python build_notebooks.py` los exporta a las versiones en script `.py` y no toca las salidas guardadas.
 
 **Cómo ejecutarlas:**
 
 1. Ir a colab.research.google.com › File › Upload notebook.
-2. Demo de LLM: Runtime › Change runtime type › **T4 GPU** (nivel gratuito). Demo vectorial: basta con CPU.
+2. Demo de LLM: Runtime › Change runtime type › GPU **A100** o **L4**. Llama-3.1-8B-Instruct necesita unos 16 GB en FP16, más de lo que tiene una T4 gratuita. Es un modelo con acceso restringido: hay que aceptar la licencia de Meta en su página de Hugging Face y añadir el token como secreto de Colab con el nombre `HF_TOKEN`. Demo vectorial: basta con CPU.
 3. Runtime › Run all. Si la primera celda actualiza `transformers` a la v5, reiniciar la sesión una vez y volver a ejecutar.
 
 | Archivo | Qué es |
@@ -630,7 +630,7 @@ Las dos demos son notebooks de Colab generados a partir de los scripts `.py` de 
 
 **Objetivo:** mostrar TurboQuant comprimiendo la caché KV de un modelo real, medir lo que hace con la calidad, la memoria y la velocidad, y compararlo con una caché INT-*b* clásica que paga por las escalas.
 
-**Configuración:** Qwen2.5-1.5B-Instruct (28 capas, 2 cabezas KV, head_dim 128) en una T4 en FP16; en CPU cambia a Qwen2.5-0.5B-Instruct con entradas más cortas. El punto de integración es una caché de Hugging Face intercambiable:
+**Configuración:** Llama-3.1-8B-Instruct (32 capas, 8 cabezas KV, head_dim 128) en FP16 en una A100 o una L4; en CPU cambia a TinyLlama-1.1B-Chat con entradas más cortas. El punto de integración es una caché de Hugging Face intercambiable:
 
 ```python
 from turboquant_core import TurboQuantCache, mixed_factory
@@ -646,6 +646,8 @@ print(cache.nbytes())                    # medido a partir de los tensores empaq
 
 El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = índice de la capa).
 
+**Por qué Llama-3.1-8B y no Qwen.** La primera versión de la demo usaba Qwen2.5-1.5B-Instruct para que cupiera en una T4 gratuita. En las pruebas, modelos más pequeños como Qwen2.5 y Llama-2 perdían la aguja al comprimir la caché a pocos bits, así que la demo pasó a Llama-3.1-8B-Instruct, el modelo que usa el artículo para sus resultados de LongBench y de la aguja (sección 5.2). Así, además, los números se pueden comparar con los del artículo. La primera celda del notebook imprime el código de atención de Llama: Hugging Face aplica RoPE a las claves antes de `past_key_values.update(...)`, así que la caché siempre guarda claves ya rotadas (después de RoPE). Eso vale para todos los modelos de `transformers` y para la configuración del propio artículo, así que RoPE por sí solo no explica la diferencia. La causa probable es que los modelos Qwen2 añaden un sesgo (bias) a `k_proj` y tienen unos pocos canales de clave con valores muy grandes, que los cuantizadores de pocos bits llevan mal. Esta explicación es una inferencia; las ejecuciones con Qwen no se guardaron.
+
 **Recorrido por secciones del notebook:**
 
 | Sección del notebook | Qué muestra | Sección de la guía |
@@ -653,7 +655,7 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 | 1. Theory check | MSE frente a las cotas del artículo para b = 1 a 5; sesgo de MSE frente a la variante prod insesgada; densidad de las coordenadas rotadas con los centroides de 3 bits | 3.1 a 3.6 |
 | 2. Load a model | Las diez configuraciones de caché comparadas: FP16, TurboQuant 4 / 3,5 / 3 / 2,5 / 2 bits, TurboQuant_prod con claves de 3 bits, INT4 / INT3 / INT2 con escalas | 1.5, 3.5 |
 | 3. Quality | Perplejidad, divergencia KL respecto al modelo FP16 y acuerdo top-1, con el texto en bloques de 128 tokens para que cada bloque atienda a la caché comprimida de todo lo anterior | 5.2 |
-| 4. Needle in a haystack | Un código escondido al 10 %, 50 % y 90 % de documentos de 2k, 4k y 8k tokens; cada token de la respuesta se genera desde la caché comprimida | 5.2 |
+| 4. Needle in a haystack | Un código escondido al 10 %, 50 % y 90 % de documentos de 2k, 4k y 8k tokens; cada token de la respuesta se genera desde la caché comprimida. Después, tres celdas pequeñas comprueban la mecánica de la caché (concatenación, error al ir añadiendo tokens, respuestas en bruto) | 5.2 |
 | 5. Memory | Bytes de caché medidos y pico de memoria de GPU; proyección para Llama-3.1-8B | 5.4 |
 | 6. Speed | Tokens por segundo al decodificar; por qué la caché de referencia es más lenta y dónde entran los kernels fusionados | 5.3 |
 
@@ -669,6 +671,29 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 | TurboQuant 2,5 (32 a 3b + 96 a 2b) | 2,5 | 6,4x |
 | TurboQuant 2 bits | 2,125 | 7,5x |
 
+**Resultados medidos** (A100 de 40 GB, ejecución del 11 de octubre de 2026; diapositivas 19 a 22):
+
+| Caché | Caché KV con 8.083 tokens | Aguja encontrada (9 prompts) | KL frente a FP16 | Acuerdo top-1 |
+|---|---|---|---|---|
+| FP16 | 1.010 MB | 9 de 9 | 0 | 100 % |
+| INT4 + escalas | 316 MB | – | 0,0005 | 99,95 % |
+| TurboQuant 4 bits | 260 MB | 9 de 9 | 0,0006 | 100 % |
+| TurboQuant 3,5 bits | 237 MB | – | 0,0022 | 99,95 % |
+| TurboQuant 3 bits | 197 MB | 9 de 9 | 0,0060 | 99,90 % |
+| INT2 + escalas | 189 MB | 7 de 9 | 0,0387 | 99,76 % |
+| TurboQuant 2,5 bits | 158 MB | 9 de 9 | 0,0124 | 99,85 % |
+| TurboQuant 2 bits | 134 MB | 9 de 9 | 0,0179 | 99,80 % |
+
+INT3 + escalas (4,0 bits) obtuvo una KL de 0,0040 y un top-1 del 99,95 %. INT2 falló la aguja dos veces, las dos con 8k tokens (profundidad del 50 % y del 90 %). Decodificando con un contexto de 4k tokens, la caché FP16 dio 27,0 tokens por segundo, TurboQuant a 4 bits 10,3 y TurboQuant a 2,5 bits 6,6.
+
+Tres conclusiones:
+
+1. **La memoria es exacta y coincide con los bits de arriba:** 3,9x menos a 4 bits, 6,4x a 2,5 bits y 7,5x a 2 bits.
+2. **Con el mismo tamaño, TurboQuant se desvía menos que INT-*b*.** TurboQuant a 3 bits (197 MB) tiene una KL seis veces menor que INT2 (189 MB), y solo INT2 perdió la aguja. TurboQuant a 3,5 bits supera a INT3 usando menos bits.
+3. **El código de referencia es más lento que FP16**, como se esperaba (sección 5.3).
+
+> **Salvedad sobre los números de calidad.** En esta ejecución WikiText-2 no se cargó (el identificador `wikitext` sin espacio de nombres ya no se resuelve), así que la sección de calidad y el pajar de la aguja usaron una misma frase repetida. Por eso la perplejidad salió cerca de 1 en todas las configuraciones y no se incluye; la KL y el top-1 siguen sirviendo para ordenar las cachés, y la prueba de la aguja fue fácil. El notebook ahora carga `Salesforce/wikitext`; al volver a ejecutar las secciones 3 y 4 estos números se sustituyen por los de texto real.
+
 **Qué observar al ejecutarla:**
 
 * La referencia sin comprimir debería encontrar la aguja en todas las longitudes y profundidades. Si no lo hace, el problema es el prompt, no la cuantización.
@@ -676,7 +701,6 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 * Comparar TurboQuant a unos 3 bits con INT2 (3,0 bits efectivos) e INT3 (4,0 bits efectivos) muestra el impuesto de las escalas de la sección 1.5.
 * En este notebook, decodificar con TurboQuant es **más lento** que con FP16. Es lo esperado: la caché de referencia decuantiza todo el historial en PyTorch en cada paso. La velocidad requiere kernels fusionados (sección 5.3).
 
-> **Estado de los números.** Las cifras de memoria de arriba son exactas para esta implementación. Los números de calidad, aguja y velocidad para Qwen se obtienen al ejecutar el notebook en una GPU; no se pudieron medir en el sandbox en la nube donde se escribió el código (sin descargas de modelos). `HANDOFF.md` (prueba T2) enumera las ejecuciones pendientes.
 
 ### 7.2 Demo 2: búsqueda vectorial (`vector_search_demo.ipynb`)
 
@@ -709,41 +733,41 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 | 7. Online ingestion | 100k vectores añadidos en lotes de 1.000 sin entrenamiento | 6.2 |
 | 8. Two-stage search | Top-100 comprimido y luego re-ranking exacto | 6.2 |
 
-**Resultados de la ejecución en el sandbox.** El sandbox en la nube no podía acceder al Hugging Face Hub, así que la ejecución de abajo usó 100k + 1k vectores de embeddings de 384 dimensiones de texto real (corpus Reuters, Gutenberg y Brown; TF-IDF + SVD), con 4 hilos de CPU. Mismo protocolo que el artículo, distintos datos. Son los números de las diapositivas "Demo 2".
+**Resultados** (CPU de Colab, 1 hilo, ejecución del 11 de octubre de 2026; son los números de las diapositivas 23 y 24). La configuración del artículo: entidades de DBpedia con embeddings de `text-embedding-3-large`, 1536 dimensiones, 100k vectores de base de datos y 1k consultas. FAISS PQ entrena su k-means con 25k de los vectores, y ese tiempo cuenta como tiempo de construcción.
 
-![Resultados de la demo 2 en el sandbox](img/es/fig14_recall.svg)
+![Resultados de la demo 2](img/es/fig14_recall.svg)
 
 | Método | Bits | Más pequeño | Construcción (s) | QPS | R1@1 | 10@10 |
 |---|---|---|---|---|---|---|
-| **turbovec** | 4 | 7,7x | 0,9 | 10.008 | **0,944** | **0,951** |
-| **TurboQuant_mse (PyTorch)** | 4 | 7,9x | 0,9 | 950 | **0,912** | **0,934** |
-| FAISS RaBitQ | 4 | 7,2x | 1,4 | 862 | 0,871 | 0,891 |
-| FAISS PQ LUT256 | 4 | 8,0x | 83,4 | 390 | 0,818 | 0,870 |
-| FAISS SQ4 | 4 | 8,0x | 0,06 | 470 | 0,814 | 0,856 |
-| FAISS PQ-FastScan | 4 | 8,0x | 4,4 | 3.784 | 0,728 | 0,808 |
-| **turbovec** | 2 | 15,0x | 0,8 | 9.340 | **0,799** | **0,832** |
-| **TurboQuant_mse (PyTorch)** | 2 | 15,7x | 0,7 | 1.039 | **0,715** | **0,802** |
-| FAISS RaBitQ | 2 | 13,2x | 0,9 | 1.717 | 0,623 | 0,704 |
-| FAISS PQ LUT256 | 2 | 16,0x | 6,6 | 930 | 0,612 | 0,724 |
-| FAISS PQ-FastScan | 2 | 16,0x | 1,6 | 6.342 | 0,536 | 0,649 |
+| **turbovec** | 4 | 7,8x | 2,4 | 126 | **0,971** | **0,967** |
+| **TurboQuant_mse (PyTorch)** | 4 | 8,0x | 34,8 | 85 | **0,966** | **0,961** |
+| FAISS RaBitQ | 4 | 7,8x | 45,5 | 48 | 0,965 | 0,965 |
+| FAISS PQ LUT256 | 4 | 8,0x | 926,3 | 6 | 0,965 | 0,960 |
+| FAISS PQ-FastScan | 4 | 8,0x | 49,3 | 180 | 0,959 | 0,954 |
+| FAISS SQ4 | 4 | 8,0x | 0,8 | 12 | 0,941 | 0,948 |
+| **turbovec** | 2 | 15,5x | 3,3 | 305 | **0,892** | **0,895** |
+| **TurboQuant_mse (PyTorch)** | 2 | 15,9x | 29,2 | 70 | **0,879** | **0,883** |
+| FAISS RaBitQ | 2 | 15,2x | 24,0 | 85 | 0,874 | 0,894 |
+| FAISS PQ LUT256 | 2 | 16,0x | 469,0 | 13 | 0,873 | 0,895 |
+| FAISS PQ-FastScan | 2 | 16,0x | 16,2 | 246 | 0,882 | 0,884 |
 
-La búsqueda exacta en float32 alcanzó 857 QPS.
+La búsqueda exacta en float32 alcanzó 180 QPS. La variante TurboQuant_prod obtuvo un R1@1 de 0,913 a 4 bits y de 0,766 a 2 bits, por debajo de la variante MSE, como predice la figura 3 del artículo para ordenar resultados.
 
 > **Cómo leer las columnas.** Las tres se calculan en `vector_search_demo.py` (sección 2) contra la respuesta exacta, que son los 100 vecinos más cercanos por producto interno según un `IndexFlatIP` de FAISS sin comprimir (los vectores están normalizados, así que equivale a la similitud coseno).
 >
-> * **QPS (queries per second, consultas por segundo)** es la velocidad: las 1.000 consultas se lanzan en un solo lote pidiendo los 64 primeros resultados de cada una, y QPS = 1.000 / segundos que tardó esa llamada, con los mismos 4 hilos de CPU para todos los métodos. Cuanto más alto, más rápido. No incluye el tiempo de construcción, y turbovec hace antes una pequeña búsqueda de calentamiento.
-> * **R1@1** es el Recall@1@k del artículo con k = 1: la fracción de consultas en las que el primer resultado devuelto es el vecino más cercano real. 0,944 significa que el primer resultado acertó en 944 de las 1.000 consultas. Las curvas 1@k del artículo (y R1@4, R1@16 y R1@64 en el notebook) relajan la condición a "el vecino más cercano real aparece en algún lugar de los k primeros resultados".
-> * **10@10** compara listas, no solo el primer resultado: para cada consulta, cuántos de los 10 vecinos reales aparecen entre los 10 devueltos, dividido entre 10, y la media sobre todas las consultas. 0,951 significa que de media se encontraron 9,5 de los 10 vecinos reales, en cualquier orden.
+> * **QPS (queries per second, consultas por segundo)** es la velocidad: las 1.000 consultas se lanzan en un solo lote pidiendo los 64 primeros resultados de cada una, y QPS = 1.000 / segundos que tardó esa llamada, con el mismo hilo de CPU para todos los métodos. Cuanto más alto, más rápido. No incluye el tiempo de construcción, y turbovec hace antes una pequeña búsqueda de calentamiento.
+> * **R1@1** es el Recall@1@k del artículo con k = 1: la fracción de consultas en las que el primer resultado devuelto es el vecino más cercano real. 0,971 significa que el primer resultado acertó en 971 de las 1.000 consultas. Las curvas 1@k del artículo (y R1@4, R1@16 y R1@64 en el notebook) relajan la condición a "el vecino más cercano real aparece en algún lugar de los k primeros resultados".
+> * **10@10** compara listas, no solo el primer resultado: para cada consulta, cuántos de los 10 vecinos reales aparecen entre los 10 devueltos, dividido entre 10, y la media sobre todas las consultas. 0,967 significa que de media se encontraron 9,7 de los 10 vecinos reales, en cualquier orden.
 >
-> El recall y las QPS se compensan entre sí, así que hay que comparar métodos con el mismo presupuesto de bits: aquí turbovec a 4 bits es a la vez más preciso y más rápido, y eso es lo poco habitual.
+> El recall y las QPS se compensan entre sí, así que hay que comparar métodos con el mismo presupuesto de bits. Aquí todos los métodos de 4 bits salvo SQ4 quedan a menos de 0,012 del R1@1 de turbovec; se diferencian sobre todo en tiempo de construcción y velocidad.
 
 **Tres mensajes de esta ejecución:**
 
-1. **Más recall sin entrenamiento.** A 4 bits, turbovec sitúa el vecino más cercano real en primer lugar el 94 % de las veces, frente al 82 % de PQ, y PQ necesitó antes 83 segundos de k-means.
-2. **Ingesta online.** Se añadieron 100k vectores a turbovec en 0,14 s, en lotes de 1.000, sin ningún entrenamiento.
+1. **El mismo recall sin entrenamiento.** A 4 bits, turbovec sitúa el vecino más cercano real en primer lugar el 97,1 % de las veces, frente al 96,5 % de PQ y RaBitQ. PQ necesitó antes 926 segundos de k-means y codificación; turbovec, 2,4 segundos.
+2. **Ingesta online.** Se añadieron 100k vectores a turbovec en 1,9 s, en lotes de 1.000, sin ningún entrenamiento.
 3. **Resultados exactos tras un re-ranking barato.** Volver a puntuar el top 100 de turbovec con los vectores completos dio un Recall@1 = **1,000**.
 
-> **Estado de los números.** La ejecución con DBpedia-1536 en Colab es la configuración de referencia del artículo; sus resultados sustituirán a la tabla del sandbox cuando se midan (`HANDOFF.md`, prueba T3). Una dimensión mayor debería favorecer aún más a TurboQuant, porque las coordenadas rotadas se vuelven más gaussianas y más independientes al crecer d.
+> **Una ejecución anterior con otros datos.** Antes de la ejecución en Colab, el mismo notebook se ejecutó en el sandbox donde se escribió el código, que no podía acceder al Hugging Face Hub, con embeddings de 384 dimensiones de texto real (corpus Reuters, Gutenberg y Brown; TF-IDF + SVD). Allí las diferencias fueron mucho mayores: a 4 bits turbovec llegó a un R1@1 de 0,944 frente a 0,818 de PQ LUT256 y 0,728 de PQ-FastScan. Con los datos de 1536 dimensiones del artículo, PQ entrenado alcanza a TurboQuant en recall, y la ventaja de TurboQuant es el entrenamiento que no necesita.
 
 ---
 
@@ -859,7 +883,7 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 * **Las configuraciones agresivas cuestan precisión en tareas difíciles.** vLLM informa de caídas de hasta unos 20 puntos en matemáticas y código difíciles con las variantes de 3 bits. 4 bits es la opción segura por defecto.
 * **La división de outliers necesita una muestra de calibración.** `MixedTurboQuant` elige los canales outlier a partir del prefill. Es ligero, pero no es estrictamente independiente de los datos.
 * **Beam search y el recorte de la caché** no están soportados por el `TurboQuantCache` de la demo; usar decodificación voraz o muestreo.
-* **Mediciones pendientes.** Los números de calidad, aguja y velocidad para Qwen, y los resultados de búsqueda con DBpedia-1536, todavía hay que medirlos en hardware real (ver `HANDOFF.md`).
+* **Falta repetir la calidad con texto real.** La ejecución guardada del notebook de LLM midió la KL y el top-1 sobre una frase repetida porque WikiText-2 no se cargó; el notebook ya lo carga. La memoria, la aguja, la velocidad y los resultados de búsqueda con DBpedia están medidos (secciones 7.1 y 7.2).
 * **Comprimir no siempre es la palanca.** Si la puntuación del producto no es vectorial, o el coste es el número de elementos guardados o de llamadas a modelos, comprimir vectores no cambia nada. Dos ejemplos con datos reales están en la sección 8 y en el [capítulo del caso de estudio](Caso_Estudio_Similitud_Provisiones_ES.md).
 
 ---
@@ -920,7 +944,7 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 
 ## Anexo A: correspondencia entre la guía, las diapositivas y los notebooks
 
-Las diapositivas y los notebooks están en inglés; los títulos se citan tal cual aparecen. La guía y la presentación siguen el mismo orden: primero la teoría (secciones 1 a 3, diapositivas 1 a 9) y después la parte aplicada (secciones 4 a 9, diapositivas 10 a 26).
+Las diapositivas y los notebooks están en inglés; los títulos se citan tal cual aparecen. La guía y la presentación siguen el mismo orden: primero la teoría (secciones 1 a 3, diapositivas 1 a 9) y después la parte aplicada (secciones 4 a 9, diapositivas 10 a 29).
 
 | Sección de la guía | Diapositivas (orden de la presentación) | Notebook |
 |---|---|---|
@@ -942,12 +966,12 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 5. Caso de uso 1: caché KV (5.2 resultados del artículo, 5.3 producción) | 13 *Paper results · KV cache*, 14 *In production* | LLM §3 a §6 |
 | 6. Caso de uso 2: búsqueda vectorial (6.3 resultados del artículo, 6.4 PQ) | 15 *Paper results · Vector search* | vectorial §5 |
 | 7. Demos | 16 *The demos*, 17 *Run it yourself* | ambos notebooks |
-| 7.1 Demo 1 | 18 y 19 *Demo 1* | notebook de LLM |
-| 7.2 Demo 2 | 20 y 21 *Demo 2* | notebook vectorial |
-| 8. Casos de estudio reales | 22 *Case studies · Real data*, 23 *Case A*, 24 *Case B*, 25 *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
-| 9. Recomendaciones prácticas | 26 *Practical guidance* | – |
+| 7.1 Demo 1 | 18 a 22 *Demo 1* (caché, comprobación teórica, memoria, aguja, calidad y velocidad) | notebook de LLM |
+| 7.2 Demo 2 | 23 y 24 *Demo 2* | notebook vectorial |
+| 8. Casos de estudio reales | 25 *Case studies · Real data*, 26 *Case A*, 27 *Case B*, 28 *Case studies · Lessons* | `es_bench/`, `memo_bench/` |
+| 9. Recomendaciones prácticas | 29 *Practical guidance* | – |
 | 10. Limitaciones, 11. Glosario | – (solo en la guía) | – |
-| 12. Referencias | 27 *References* | – |
+| 12. Referencias | 30 *References* | – |
 | Caso de estudio (capítulo aparte) | – | `es_bench/`, `memo_bench/` |
 
 ### Agenda propuesta para el taller (unos 90 minutos)
@@ -959,9 +983,9 @@ Las diapositivas y los notebooks están en inglés; los títulos se citan tal cu
 | 0:15 | Cómo funciona: rotación, codebook, residuo QJL, cotas | Guía §3, diapositivas 7 a 9 |
 | 0:30 | Ejemplos resueltos a mano: QJL, PolarQuant, TurboQuant | Guía §4, diapositivas 10 a 12 |
 | 0:40 | Casos de uso: caché KV y búsqueda vectorial, resultados del artículo y de producción | Guía §5 y §6, diapositivas 13 a 15 |
-| 0:50 | Práctica: ejecutar los dos notebooks | Guía §7, diapositivas 16 a 21 |
-| 1:10 | Dos casos reales en que comprimir no ayuda | Guía §8, diapositivas 22 a 25, capítulo del caso de estudio |
-| 1:20 | Recomendaciones, limitaciones, preguntas | Guía §9 y §10, diapositivas 26 y 27 |
+| 0:50 | Práctica: ejecutar los dos notebooks | Guía §7, diapositivas 16 a 24 |
+| 1:10 | Dos casos reales en que comprimir no ayuda | Guía §8, diapositivas 25 a 28, capítulo del caso de estudio |
+| 1:20 | Recomendaciones, limitaciones, preguntas | Guía §9 y §10, diapositivas 29 y 30 |
 
 ---
 
