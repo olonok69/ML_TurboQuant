@@ -343,7 +343,7 @@ try:
             ck, cv = self.kq.quantize(k), self.vq.quantize(v)
             if self.ck is None:
                 self.ck, self.cv = ck, cv
-            else:  # leading dims [B, H, T] -> token axis is 2 for every stored field
+            else:  # leading dims [B, H, T, D] -> token axis is 2 for compressed Compressed structures
                 self.ck, self.cv = cat_compressed(self.ck, ck, 2), cat_compressed(self.cv, cv, 2)
 
         def update(self, key_states, value_states, *args, **kwargs):
@@ -351,19 +351,26 @@ try:
                 self.lazy_initialization(key_states, value_states)
             self.cumulative_length += key_states.shape[-2]
             dt = key_states.dtype
+
+            # Step 1: Append incoming tokens to full-precision temporary buffers
+            self.keys = torch.cat([self.keys, key_states], dim=-2)
+            self.values = torch.cat([self.values, value_states], dim=-2)
+
+            # Step 2: Push overflow tokens out of full-precision buffers into compressed containers
+            overflow = self.keys.shape[-2] - self.residual_length
+            if overflow > 0:
+                self._append(self.keys[..., :overflow, :], self.values[..., :overflow, :])
+                self.keys = self.keys[..., overflow:, :].contiguous()
+                self.values = self.values[..., overflow:, :].contiguous()
+
+            # Step 3: Dequantize the history and build cleanly aligned, non-overlapping outputs
             parts_k, parts_v = [], []
             if self.ck is not None:
                 parts_k.append(self.kq.dequantize(self.ck, dt))
                 parts_v.append(self.vq.dequantize(self.cv, dt))
-            self.keys = torch.cat([self.keys, key_states], dim=-2)
-            self.values = torch.cat([self.values, value_states], dim=-2)
+
             k_out = torch.cat(parts_k + [self.keys], dim=-2)
             v_out = torch.cat(parts_v + [self.values], dim=-2)
-            overflow = self.keys.shape[-2] - self.residual_length
-            if overflow > 0:  # move the oldest tokens from the fp16 buffer into compressed storage
-                self._append(self.keys[..., :overflow, :], self.values[..., :overflow, :])
-                self.keys = self.keys[..., overflow:, :].contiguous()
-                self.values = self.values[..., overflow:, :].contiguous()
             return k_out, v_out
 
         def get_seq_length(self) -> int:
@@ -399,7 +406,7 @@ try:
         return sum(l.keys.numel() * l.keys.element_size() + l.values.numel() * l.values.element_size()
                    for l in cache.layers if l.keys is not None)
 
-except ImportError:  # transformers not installed: quantizers still work
+except ImportError:
     pass
 
 

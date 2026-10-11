@@ -177,6 +177,7 @@ def chunked_logits(cache_name):
 ref_logits, ref_cache = chunked_logits("Uncompressed cache (baseline)")
 ref_logp = torch.log_softmax(ref_logits[0, :-1], -1)
 targets = ids[0, 1:]
+BASE_BITS = bits_per_channel(ref_cache, ids.shape[1])
 results = []
 for name in CONFIGS:
     t0 = time.time()
@@ -186,7 +187,7 @@ for name in CONFIGS:
     kl = (ref_logp.exp() * (ref_logp - logp)).sum(-1).mean().item()
     agree = (logp.argmax(-1) == ref_logp.argmax(-1)).float().mean().item()
     results.append(dict(config=name, bits_per_channel=round(bits_per_channel(cache, ids.shape[1]), 3),
-                        compression=round(16 / bits_per_channel(cache, ids.shape[1]), 2),
+                        compression=round(BASE_BITS / bits_per_channel(cache, ids.shape[1]), 2),   # vs the measured baseline (16 on GPU, 32 for the fp32 CPU run)
                         perplexity=round(math.exp(nll), 3), KL_vs_baseline=round(kl, 5), top1_agree=round(agree, 4),
                         kv_MB=round(cache_nbytes(cache) / 2 ** 20, 2)))
     del cache; gc.collect()
