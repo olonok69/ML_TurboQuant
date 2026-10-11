@@ -16,6 +16,9 @@ What is implemented
   * A uniform INT-b baseline with per-group fp16 scale + zero point (KIVI / HF QuantizedCache style).
   * A Hugging Face `transformers` (v5) KV-cache (`TurboQuantCache`) that stores keys/values
     compressed and dequantizes on read.
+  * Key-bias correction (`RoPEKeyBias`): models with a k_proj bias (Qwen2/2.5) put a huge constant
+    vector into every key; it is subtracted before quantization and added back on read. Without
+    it, per-token key quantization at any bit width is close to useless on those models.
 
 This is a readable reference, not a fused kernel: dequantization happens in PyTorch, so it
 saves memory but does not speed attention up. Production speedups come from fused kernels
@@ -318,32 +321,69 @@ def cat_compressed(a, b, dim):
 # ----------------------------------------------------------------------------------------
 # 4. Hugging Face transformers (v5) KV cache
 # ----------------------------------------------------------------------------------------
+def _rotate_half(x):
+    x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
+    return torch.cat((-x2, x1), dim=-1)
+
+
+class RoPEKeyBias:
+    """Key offset for models whose k_proj has a bias (Qwen2/2.5, ...).
+
+    Such models write a large, token-independent vector `b` into every key; after RoPE it becomes
+    RoPE(b, pos). In Qwen2.5 this carries 40-99% of the key energy per layer, so any per-token
+    quantizer (TurboQuant or INT-b) spends its error budget on a constant and destroys the part of
+    the key that actually differs between tokens. Subtracting RoPE(b, pos) before quantizing and
+    adding it back on read removes the problem exactly, with no calibration data: `b` is a model
+    weight, and cos/sin are recomputed from the position (no extra memory per token).
+
+    Assumes positions equal token indices (batch size 1 or right padding), as in the demos.
+    """
+
+    def __init__(self, bias: torch.Tensor, rotary_emb):
+        self.bias, self.rotary_emb = bias.detach(), rotary_emb      # bias: [H_kv, head_dim] (pre-RoPE)
+
+    def __call__(self, start: int, n: int, ref: torch.Tensor) -> torch.Tensor:
+        pos = torch.arange(start, start + n, device=ref.device)[None]
+        cos, sin = self.rotary_emb(ref, pos)                        # [1, n, head_dim]
+        b = self.bias.to(device=ref.device, dtype=cos.dtype)[None, :, None, :]
+        return (b * cos[:, None] + _rotate_half(b) * sin[:, None]).to(ref.dtype)   # [1, H_kv, n, head_dim]
+
+
 try:
     from transformers.cache_utils import Cache, DynamicLayer
 
     class TurboQuantLayer(DynamicLayer):
         """One attention layer's cache: keys/values stored compressed, the last
-        `residual_length` tokens kept in full precision (0 = quantize everything, as in the paper)."""
+        `residual_length` tokens kept in full precision (0 = quantize everything, as in the paper).
 
-        def __init__(self, k_quant, v_quant, residual_length: int = 0):
+        `key_offset`: optional callable (start, n, ref) -> [1, H, n, D] subtracted from keys before
+        quantization and added back on read (see `RoPEKeyBias`)."""
+
+        def __init__(self, k_quant, v_quant, residual_length: int = 0, key_offset=None):
             super().__init__()
             self.kq, self.vq = k_quant, v_quant
             self.residual_length = residual_length
+            self.key_offset = key_offset
             self.ck = self.cv = None          # compressed storage, token axis = -2 of the original
+            self.n_compressed = 0             # tokens in compressed storage (positions 0 .. n-1)
             self.cumulative_length = 0
+
+        def _centered(self, k, start):
+            return k if self.key_offset is None else k - self.key_offset(start, k.shape[-2], k)
 
         def lazy_initialization(self, key_states, value_states):
             super().lazy_initialization(key_states, value_states)
             for q in (self.kq, self.vq):
                 q.to(key_states.device)
                 if isinstance(q, MixedTurboQuant) and not q.calibrated:
-                    q.calibrate(key_states if q is self.kq else value_states)
+                    q.calibrate(self._centered(key_states, 0) if q is self.kq else value_states)
 
         def _append(self, k, v):
-            ck, cv = self.kq.quantize(k), self.vq.quantize(v)
+            ck, cv = self.kq.quantize(self._centered(k, self.n_compressed)), self.vq.quantize(v)
+            self.n_compressed += k.shape[-2]
             if self.ck is None:
                 self.ck, self.cv = ck, cv
-            else:  # leading dims [B, H, T, D] -> token axis is 2 for compressed Compressed structures
+            else:  # leading dims [B, H, T] -> token axis is 2 for every stored field
                 self.ck, self.cv = cat_compressed(self.ck, ck, 2), cat_compressed(self.cv, cv, 2)
 
         def update(self, key_states, value_states, *args, **kwargs):
@@ -351,33 +391,32 @@ try:
                 self.lazy_initialization(key_states, value_states)
             self.cumulative_length += key_states.shape[-2]
             dt = key_states.dtype
-
-            # Step 1: Append incoming tokens to full-precision temporary buffers
+            # The new tokens are served in full precision this step (streaming semantics: every
+            # *past* token lives in the compressed cache); they are compressed right after.
+            parts_k, parts_v = [], []
+            if self.ck is not None:
+                k_hist = self.kq.dequantize(self.ck, dt)
+                if self.key_offset is not None:
+                    k_hist = k_hist + self.key_offset(0, self.n_compressed, k_hist)
+                parts_k.append(k_hist)
+                parts_v.append(self.vq.dequantize(self.cv, dt))
             self.keys = torch.cat([self.keys, key_states], dim=-2)
             self.values = torch.cat([self.values, value_states], dim=-2)
-
-            # Step 2: Push overflow tokens out of full-precision buffers into compressed containers
+            k_out = torch.cat(parts_k + [self.keys], dim=-2)
+            v_out = torch.cat(parts_v + [self.values], dim=-2)
             overflow = self.keys.shape[-2] - self.residual_length
-            if overflow > 0:
+            if overflow > 0:  # move the oldest tokens from the fp16 buffer into compressed storage
                 self._append(self.keys[..., :overflow, :], self.values[..., :overflow, :])
                 self.keys = self.keys[..., overflow:, :].contiguous()
                 self.values = self.values[..., overflow:, :].contiguous()
-
-            # Step 3: Dequantize the history and build cleanly aligned, non-overlapping outputs
-            parts_k, parts_v = [], []
-            if self.ck is not None:
-                parts_k.append(self.kq.dequantize(self.ck, dt))
-                parts_v.append(self.vq.dequantize(self.cv, dt))
-
-            k_out = torch.cat(parts_k + [self.keys], dim=-2)
-            v_out = torch.cat(parts_v + [self.values], dim=-2)
             return k_out, v_out
 
-        def get_seq_length(self) -> int:
+        def get_seq_length(self, *args, **kwargs) -> int:
             return self.cumulative_length
 
         def reset(self):
             self.ck = self.cv = None
+            self.n_compressed = 0
             self.cumulative_length = 0
             super().reset()
 
@@ -385,17 +424,35 @@ try:
             fp = 0 if self.keys is None else self.keys.numel() * self.keys.element_size() * 2
             return fp + nbytes(self.ck) + nbytes(self.cv)
 
+    def key_bias_offsets(model):
+        """Per-layer `RoPEKeyBias` for a HF decoder whose attention k_proj has a bias; None entries otherwise."""
+        dec = model.get_decoder() if hasattr(model, "get_decoder") else model
+        rotary = getattr(dec, "rotary_emb", None)
+        offsets = []
+        for layer in getattr(dec, "layers", []):
+            attn = getattr(layer, "self_attn", None)
+            bias = getattr(getattr(attn, "k_proj", None), "bias", None)
+            if rotary is None or bias is None:
+                offsets.append(None)
+            else:
+                hd = getattr(attn, "head_dim", None) or bias.numel() // getattr(attn, "num_key_value_heads", 1)
+                offsets.append(RoPEKeyBias(bias.view(-1, hd), rotary))
+        return offsets
+
     class TurboQuantCache(Cache):
         """Drop-in KV cache for HF `generate`/forward.
 
         make_k / make_v: callables (layer_idx, head_dim) -> quantizer (TurboQuant, MixedTurboQuant,
         UniformQuant). Each layer gets its own random rotation via the seed.
+        model: pass the model to enable the key-bias correction (`RoPEKeyBias`) on models with a
+        k_proj bias. Without it such models (Qwen2.5) lose most of their quality at any bit width.
         """
 
-        def __init__(self, config, make_k, make_v, residual_length: int = 0):
+        def __init__(self, config, make_k, make_v, residual_length: int = 0, model=None, key_bias_correction=True):
             cfg = config.get_text_config(decoder=True) if hasattr(config, "get_text_config") else config
             hd = getattr(cfg, "head_dim", None) or cfg.hidden_size // cfg.num_attention_heads
-            layers = [TurboQuantLayer(make_k(i, hd), make_v(i, hd), residual_length) for i in range(cfg.num_hidden_layers)]
+            offsets = key_bias_offsets(model) if (model is not None and key_bias_correction) else [None] * cfg.num_hidden_layers
+            layers = [TurboQuantLayer(make_k(i, hd), make_v(i, hd), residual_length, offsets[i]) for i in range(cfg.num_hidden_layers)]
             super().__init__(layers=layers)
 
         def nbytes(self) -> int:

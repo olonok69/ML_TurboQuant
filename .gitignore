@@ -25,3 +25,5 @@ __pycache__/
 es_bench/results/
 *.npz
 *.pdf
+# archived notes, kept locally only
+archive/
