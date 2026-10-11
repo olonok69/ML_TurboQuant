@@ -445,7 +445,17 @@ The same vector and query as in sections 4.1 and 4.2, `v = [3, −4, 2, 0.5]` an
 6. **QJL on the residual.** TurboQuant uses a square d × d Gaussian matrix *S*. Take the three rows of the QJL example and suppose the fourth row drawn is `[0.4, −0.7, −0.3, 0.9]`. Then `S·r = [0.47, 0.31, −0.32, −0.87]` and the signs `[+1, +1, −1, −1]` are stored as the bits `1100`.
 7. **Estimate the score.** The query is projected with the same *S* but never quantized: `S·q = [1.5, −0.7, −0.8, 0.8]`, so `⟨S·q, sign(S·r)⟩ = 1.5 − 0.7 + 0.8 − 0.8 = 0.8`. The correction is `√(π/2)/4 · 1.29 · 0.8 = 0.32`, and the estimate is `8.48 + 0.32 = 8.81`, against a true value of 9.
 
-What stays in memory: 8 bits of codes, 4 sign bits and two fp16 norms (‖v‖ and ‖r‖), 44 bits instead of the 64 bits of four fp16 numbers. The two norms dominate only because d = 4; at d = 128 and 3 bits a vector takes 384 + 32 = 416 bits instead of 2,048.
+What stays in memory, for the 4 numbers of `v`:
+
+| Stored item | Count | Bits |
+|---|---|---|
+| MSE codes (step 3) | 4 coordinates × 2 bits | 8 |
+| QJL sign bits (step 6) | 4 rows of *S* × 1 bit | 4 |
+| ‖v‖ (step 1) | 1 fp16 number | 16 |
+| ‖r‖ (step 5) | 1 fp16 number | 16 |
+| **Total** | | **44** |
+
+The original vector is 4 float32 numbers, 4 × 32 = 128 bits (64 bits in fp16), so TurboQuant keeps 44 of 128 bits, about 2.9× smaller. The two norms (32 of the 44 bits) dominate only because d = 4; at d = 128 and 3 bits a vector takes 128 × 3 + 32 = 416 bits instead of 4,096 in float32 (2,048 in fp16).
 
 Three points the example makes concrete:
 

@@ -445,7 +445,17 @@ El mismo vector y la misma consulta que en las secciones 4.1 y 4.2, `v = [3, −
 6. **QJL sobre el residuo.** TurboQuant usa una matriz gaussiana *S* cuadrada de d × d. Tomemos las tres filas del ejemplo de QJL y supongamos que la cuarta fila que sale es `[0,4, −0,7, −0,3, 0,9]`. Entonces `S·r = [0,47, 0,31, −0,32, −0,87]` y los signos `[+1, +1, −1, −1]` se guardan como los bits `1100`.
 7. **Estimar la puntuación.** La consulta se proyecta con la misma *S* pero nunca se cuantiza: `S·q = [1,5, −0,7, −0,8, 0,8]`, así que `⟨S·q, sign(S·r)⟩ = 1,5 − 0,7 + 0,8 − 0,8 = 0,8`. La corrección es `√(π/2)/4 · 1,29 · 0,8 = 0,32` y la estimación es `8,48 + 0,32 = 8,81`, frente a un valor real de 9.
 
-Lo que queda en memoria: 8 bits de códigos, 4 bits de signo y dos normas fp16 (‖v‖ y ‖r‖), 44 bits en lugar de los 64 bits de cuatro números fp16. Las dos normas pesan tanto solo porque d = 4; con d = 128 y 3 bits un vector ocupa 384 + 32 = 416 bits en lugar de 2.048.
+Lo que queda en memoria para los 4 números de `v`:
+
+| Dato guardado | Cantidad | Bits |
+|---|---|---|
+| Códigos MSE (paso 3) | 4 coordenadas × 2 bits | 8 |
+| Bits de signo QJL (paso 6) | 4 filas de *S* × 1 bit | 4 |
+| ‖v‖ (paso 1) | 1 número fp16 | 16 |
+| ‖r‖ (paso 5) | 1 número fp16 | 16 |
+| **Total** | | **44** |
+
+El vector original son 4 números float32, 4 × 32 = 128 bits (64 bits en fp16), así que TurboQuant guarda 44 de 128 bits, unas 2,9 veces menos. Las dos normas (32 de los 44 bits) pesan tanto solo porque d = 4; con d = 128 y 3 bits un vector ocupa 128 × 3 + 32 = 416 bits en lugar de 4.096 en float32 (2.048 en fp16).
 
 Tres cosas que el ejemplo deja claras:
 
