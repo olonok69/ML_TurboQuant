@@ -671,28 +671,27 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 | TurboQuant 2,5 (32 a 3b + 96 a 2b) | 2,5 | 6,4x |
 | TurboQuant 2 bits | 2,125 | 7,5x |
 
-**Resultados medidos** (A100 de 40 GB, ejecución del 11 de octubre de 2026; diapositivas 19 a 22):
+**Resultados medidos** (A100 de 40 GB, ejecución del 11 de octubre de 2026 con WikiText-2; diapositivas 19 a 22):
 
-| Caché | Caché KV con 8.083 tokens | Aguja encontrada (9 prompts) | KL frente a FP16 | Acuerdo top-1 |
-|---|---|---|---|---|
-| FP16 | 1.010 MB | 9 de 9 | 0 | 100 % |
-| INT4 + escalas | 316 MB | – | 0,0005 | 99,95 % |
-| TurboQuant 4 bits | 260 MB | 9 de 9 | 0,0006 | 100 % |
-| TurboQuant 3,5 bits | 237 MB | – | 0,0022 | 99,95 % |
-| TurboQuant 3 bits | 197 MB | 9 de 9 | 0,0060 | 99,90 % |
-| INT2 + escalas | 189 MB | 7 de 9 | 0,0387 | 99,76 % |
-| TurboQuant 2,5 bits | 158 MB | 9 de 9 | 0,0124 | 99,85 % |
-| TurboQuant 2 bits | 134 MB | 9 de 9 | 0,0179 | 99,80 % |
+| Caché | Caché KV con 8.084 tokens | Perplejidad | KL frente a FP16 | Acuerdo top-1 | Aguja encontrada (9 prompts) |
+|---|---|---|---|---|---|
+| FP16 | 1.010 MB | 5,71 | 0 | 100 % | 9 de 9 |
+| INT4 + escalas | 316 MB | 5,78 | 0,012 | 96,2 % | – |
+| TurboQuant 4 bits | 260 MB | 5,81 | 0,014 | 95,9 % | 9 de 9 |
+| TurboQuant 3,5 bits | 237 MB | 5,86 | 0,024 | 93,4 % | – |
+| TurboQuant 3 bits | 197 MB | 6,10 | 0,060 | 90,7 % | 9 de 9 |
+| INT2 + escalas | 189 MB | 17,20 | 1,117 | 59,8 % | 3 de 9 |
+| TurboQuant 2,5 bits | 158 MB | 7,38 | 0,246 | 81,3 % | 7 de 9 |
+| TurboQuant 2 bits | 134 MB | 9,36 | 0,475 | 74,1 % | 8 de 9 |
 
-INT3 + escalas (4,0 bits) obtuvo una KL de 0,0040 y un top-1 del 99,95 %. INT2 falló la aguja dos veces, las dos con 8k tokens (profundidad del 50 % y del 90 %). Decodificando con un contexto de 4k tokens, la caché FP16 dio 27,0 tokens por segundo, TurboQuant a 4 bits 10,3 y TurboQuant a 2,5 bits 6,6.
+INT3 + escalas (4,0 bits) obtuvo una perplejidad de 6,14, una KL de 0,069 y un top-1 del 90,2 %; TurboQuant_prod con claves de 3 bits obtuvo 9,91, peor que la variante MSE con el mismo tamaño (sección 3.4). La calidad usa los primeros 2.048 tokens del conjunto de test de WikiText-2, en bloques de 128 tokens para que cada bloque lea la caché comprimida. El pajar de la aguja es texto de WikiText-2; la mayoría de los fallos devolvieron parte del código (por ejemplo `7319` o `ALPHA-42`). Decodificando con un contexto de 4k tokens, la caché FP16 dio 26,3 tokens por segundo, TurboQuant a 4 bits 10,2 y TurboQuant a 2,5 bits 6,5.
 
-Tres conclusiones:
+Cuatro conclusiones:
 
 1. **La memoria es exacta y coincide con los bits de arriba:** 3,9x menos a 4 bits, 6,4x a 2,5 bits y 7,5x a 2 bits.
-2. **Con el mismo tamaño, TurboQuant se desvía menos que INT-*b*.** TurboQuant a 3 bits (197 MB) tiene una KL seis veces menor que INT2 (189 MB), y solo INT2 perdió la aguja. TurboQuant a 3,5 bits supera a INT3 usando menos bits.
-3. **El código de referencia es más lento que FP16**, como se esperaba (sección 5.3).
-
-> **Salvedad sobre los números de calidad.** En esta ejecución WikiText-2 no se cargó (el identificador `wikitext` sin espacio de nombres ya no se resuelve), así que la sección de calidad y el pajar de la aguja usaron una misma frase repetida. Por eso la perplejidad salió cerca de 1 en todas las configuraciones y no se incluye; la KL y el top-1 siguen sirviendo para ordenar las cachés, y la prueba de la aguja fue fácil. El notebook ahora carga `Salesforce/wikitext`; al volver a ejecutar las secciones 3 y 4 estos números se sustituyen por los de texto real.
+2. **Con 3,5 bits o más, TurboQuant se queda a menos de un 3 % de la perplejidad de FP16** (5,81 y 5,86 frente a 5,71) y encuentra todas las agujas.
+3. **Con el mismo tamaño, TurboQuant supera con claridad a INT-*b*.** TurboQuant a 3 bits (197 MB) mantiene la perplejidad en 6,10, mientras que INT2 (189 MB) llega a 17,20 y encuentra la aguja 3 veces de 9. TurboQuant a 3,5 bits supera a INT3 (5,86 frente a 6,14) con menos bits. A 4 bits INT4 es igual de bueno, pero necesita 5 bits por canal.
+4. **Por debajo de 3 bits esta implementación pierde calidad:** la perplejidad sube un 29 % a 2,5 bits y un 64 % a 2 bits, y la aguja empieza a fallar. El artículo presenta 2,5 bits como casi neutro en LongBench, una media de tareas más tolerante que la perplejidad del siguiente token. Además, el código de referencia es más lento que FP16, como se esperaba (sección 5.3).
 
 **Qué observar al ejecutarla:**
 
@@ -883,7 +882,7 @@ TurboQuant conserva los vecinos por coseno mejor que int8 o binario con cada pre
 * **Las configuraciones agresivas cuestan precisión en tareas difíciles.** vLLM informa de caídas de hasta unos 20 puntos en matemáticas y código difíciles con las variantes de 3 bits. 4 bits es la opción segura por defecto.
 * **La división de outliers necesita una muestra de calibración.** `MixedTurboQuant` elige los canales outlier a partir del prefill. Es ligero, pero no es estrictamente independiente de los datos.
 * **Beam search y el recorte de la caché** no están soportados por el `TurboQuantCache` de la demo; usar decodificación voraz o muestreo.
-* **Falta repetir la calidad con texto real.** La ejecución guardada del notebook de LLM midió la KL y el top-1 sobre una frase repetida porque WikiText-2 no se cargó; el notebook ya lo carga. La memoria, la aguja, la velocidad y los resultados de búsqueda con DBpedia están medidos (secciones 7.1 y 7.2).
+* **Por debajo de 3 bits la calidad baja en la demo.** Con WikiText-2, TurboQuant a 2,5 y 2 bits subió la perplejidad un 29 % y un 64 %, frente a menos de un 3 % a 3,5 y 4 bits (sección 7.1). Conviene probar el número de bits en la tarea propia antes de bajar de 3.
 * **Comprimir no siempre es la palanca.** Si la puntuación del producto no es vectorial, o el coste es el número de elementos guardados o de llamadas a modelos, comprimir vectores no cambia nada. Dos ejemplos con datos reales están en la sección 8 y en el [capítulo del caso de estudio](Caso_Estudio_Similitud_Provisiones_ES.md).
 
 ---

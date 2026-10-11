@@ -318,15 +318,47 @@ display(quality)
 # 4. **Right Plot (KL Divergence vs. Effective Bits)**: Uses a logarithmic y-axis to represent the exact probability distribution distance (KL divergence) from the FP16 target, detailing how closely the soft probability space of token predictions is preserved.
 
 # %%
+def label_points(ax, xs, ys, labels, fontsize=8, pad=6, gap=2):
+    """Write each label next to its point, nudging labels up until none overlap; a thin leader line marks moved ones."""
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    pts = ax.transData.transform(np.column_stack([xs, ys]))
+    right_edge = ax.get_window_extent().x1
+    placed = []
+    for i in np.argsort(pts[:, 1]):
+        probe = ax.text(0, 0, labels[i], fontsize=fontsize)
+        box = probe.get_window_extent(renderer=renderer)
+        probe.remove()
+        w, h = box.width, box.height
+        left = pts[i, 0] + pad + w > right_edge          # no room on the right: write it on the left
+        x0 = pts[i, 0] - pad - w if left else pts[i, 0] + pad
+        y0 = pts[i, 1] - h / 2
+        moved = True
+        while moved:
+            moved = False
+            for a0, a1, b0, b1 in placed:
+                if x0 < a1 and x0 + w > a0 and y0 < b1 + gap and y0 + h + gap > b0:
+                    y0, moved = b1 + gap, True
+        placed.append((x0, x0 + w, y0, y0 + h))
+        dy = y0 + h / 2 - pts[i, 1]
+        ax.annotate(labels[i], (xs[i], ys[i]), xytext=(-pad if left else pad, dy), textcoords="offset pixels",
+                    fontsize=fontsize, ha="right" if left else "left", va="center",
+                    arrowprops=dict(arrowstyle="-", color="0.6", lw=0.6, shrinkA=0, shrinkB=4) if abs(dy) > h / 2 else None)
+
+
+short = lambda c: c.replace(" (outlier split)", "*").replace(" + scale/zero per 32 ch", "").replace(" (MSE 2b + QJL 1b)", "")
+colors = ["C0" if c.startswith("TurboQuant") else ("C3" if c.startswith("INT") else "k") for c in quality.config]
+kl = quality.KL_vs_baseline.clip(lower=1e-6)
 fig, ax = plt.subplots(1, 2, figsize=(14, 4.5))
-for i, r in quality.iterrows():
-    col = "C0" if r.config.startswith("TurboQuant") else ("C3" if r.config.startswith("INT") else "k")
-    ax[0].scatter(r.bits_per_channel, r.perplexity, c=col, s=60)
-    ax[0].annotate(r.config.replace(" (outlier split)", "*").replace(" + scale/zero per 32 ch", ""), (r.bits_per_channel, r.perplexity), fontsize=7, xytext=(4, 4), textcoords="offset points")
-    ax[1].scatter(r.bits_per_channel, max(r.KL_vs_baseline, 1e-6), c=col, s=60)
+ax[0].scatter(quality.bits_per_channel, quality.perplexity, c=colors, s=60, zorder=3)
+ax[1].scatter(quality.bits_per_channel, kl, c=colors, s=60, zorder=3)
 ax[0].set(xlabel="effective bits per channel (incl. norms / scales)", ylabel="perplexity", title="Perplexity vs. memory (blue = TurboQuant, red = INT-b)")
 ax[1].set(xlabel="effective bits per channel", ylabel="KL(FP16 || quantized)", yscale="log", title="Divergence from the FP16 model")
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+for a, y in ((ax[0], quality.perplexity), (ax[1], kl)):
+    label_points(a, quality.bits_per_channel.to_numpy(), y.to_numpy(), [short(c) for c in quality.config], fontsize=7)
+plt.show()
 
 # %%
 import matplotlib.pyplot as plt
@@ -432,36 +464,27 @@ display(combined_df)
 
 # %%
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 # Sort by memory footprint to make a sensible line/Pareto plot
 df_line = quality.sort_values('kv_MB')
 
-plt.figure(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(10, 6))
 
 # Plot the connected line to show the Pareto curve trend
-plt.plot(df_line['kv_MB'], df_line['perplexity'], marker='', linestyle='-', color='gray', alpha=0.5)
+ax.plot(df_line['kv_MB'], df_line['perplexity'], marker='', linestyle='-', color='gray', alpha=0.5)
 
 # Overlay scatter points with distinct colors
-for i, r in df_line.iterrows():
-    col = "#1f77b4" if "TurboQuant" in r.config else ("#d62728" if "INT" in r.config else "k")
-    plt.scatter(r.kv_MB, r.perplexity, c=col, s=80, zorder=5)
+colors = ["#1f77b4" if "TurboQuant" in c else ("#d62728" if "INT" in c else "k") for c in df_line.config]
+ax.scatter(df_line.kv_MB, df_line.perplexity, c=colors, s=80, zorder=5)
 
-    # Add compact annotations for clarity
-    label = r.config.replace(" (outlier split)", "*").replace(" + scale/zero per 32 ch", "")
-    plt.annotate(
-        label,
-        (r.kv_MB, r.perplexity),
-        fontsize=8,
-        xytext=(6, -2),
-        textcoords="offset points"
-    )
-
-plt.title("Memory Footprint vs. Perplexity (Trade-off Curve)")
-plt.xlabel("KV Cache Footprint (MB) for 2048 Tokens")
-plt.ylabel("Perplexity (Lower is Better)")
-plt.grid(True, linestyle='--', alpha=0.6)
+ax.set_title("Memory Footprint vs. Perplexity (Trade-off Curve)")
+ax.set_xlabel("KV Cache Footprint (MB) for 2048 Tokens")
+ax.set_ylabel("Perplexity (Lower is Better)")
+ax.grid(True, linestyle='--', alpha=0.6)
 plt.tight_layout()
+
+# Compact labels, spread out so close points stay readable (label_points is defined in the plot cell above)
+label_points(ax, df_line.kv_MB.to_numpy(), df_line.perplexity.to_numpy(), [short(c) for c in df_line.config], fontsize=8)
 plt.show()
 
 # %% [markdown]
@@ -655,7 +678,7 @@ display(niah)
 #
 # * **Values of 1.0 (Dark Blue)** indicate perfect retrieval.
 # * **Lower values (Light Blue / Yellow)** indicate that the quantization noise caused the model to lose track of the specific long-range attention keys needed to find the hidden code.
-# * Compare `INT2` (3.0 effective bits per channel, because of its scales) with `TurboQuant 2.5-bit` and `TurboQuant 2-bit`, which use fewer bits. Retrieval errors usually appear first at the longest context.
+# * Compare `INT2` (3.0 effective bits per channel, because of its scales) with `TurboQuant 2.5-bit` and `TurboQuant 2-bit`, which use fewer bits. With real text as filler, misses are scattered across lengths and depths rather than tied to the longest context, so read the heatmap together with the per-prompt table above.
 # * Nine prompts per configuration (three lengths times three depths) is a small sample: read a cell as "found in 3 of 3", "2 of 3", and so on.
 
 # %%

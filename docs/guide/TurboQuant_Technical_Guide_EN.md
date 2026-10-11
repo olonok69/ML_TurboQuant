@@ -670,28 +670,27 @@ Nothing in the model changes. Each layer gets its own random rotation (seed = la
 | TurboQuant 2.5 (32 @3b + 96 @2b) | 2.5 | 6.4x |
 | TurboQuant 2-bit | 2.125 | 7.5x |
 
-**Measured results** (A100 40 GB, run of 11 October 2026; slides 19 to 22):
+**Measured results** (A100 40 GB, run of 11 October 2026 on WikiText-2; slides 19 to 22):
 
-| Cache | KV cache at 8,083 tokens | Needle found (9 prompts) | KL vs FP16 | Top-1 agreement |
-|---|---|---|---|---|
-| FP16 | 1,010 MB | 9 of 9 | 0 | 100% |
-| INT4 + scales | 316 MB | – | 0.0005 | 99.95% |
-| TurboQuant 4-bit | 260 MB | 9 of 9 | 0.0006 | 100% |
-| TurboQuant 3.5-bit | 237 MB | – | 0.0022 | 99.95% |
-| TurboQuant 3-bit | 197 MB | 9 of 9 | 0.0060 | 99.90% |
-| INT2 + scales | 189 MB | 7 of 9 | 0.0387 | 99.76% |
-| TurboQuant 2.5-bit | 158 MB | 9 of 9 | 0.0124 | 99.85% |
-| TurboQuant 2-bit | 134 MB | 9 of 9 | 0.0179 | 99.80% |
+| Cache | KV cache at 8,084 tokens | Perplexity | KL vs FP16 | Top-1 agreement | Needle found (9 prompts) |
+|---|---|---|---|---|---|
+| FP16 | 1,010 MB | 5.71 | 0 | 100% | 9 of 9 |
+| INT4 + scales | 316 MB | 5.78 | 0.012 | 96.2% | – |
+| TurboQuant 4-bit | 260 MB | 5.81 | 0.014 | 95.9% | 9 of 9 |
+| TurboQuant 3.5-bit | 237 MB | 5.86 | 0.024 | 93.4% | – |
+| TurboQuant 3-bit | 197 MB | 6.10 | 0.060 | 90.7% | 9 of 9 |
+| INT2 + scales | 189 MB | 17.20 | 1.117 | 59.8% | 3 of 9 |
+| TurboQuant 2.5-bit | 158 MB | 7.38 | 0.246 | 81.3% | 7 of 9 |
+| TurboQuant 2-bit | 134 MB | 9.36 | 0.475 | 74.1% | 8 of 9 |
 
-INT3 + scales (4.0 bits) scored KL 0.0040 and top-1 99.95%. INT2 missed the needle twice, both at 8k tokens (50% and 90% depth). Decoding with a 4k-token context ran at 27.0 tokens per second with the FP16 cache, 10.3 with TurboQuant 4-bit and 6.6 with TurboQuant 2.5-bit.
+INT3 + scales (4.0 bits) scored perplexity 6.14, KL 0.069 and top-1 90.2%; TurboQuant_prod with 3-bit keys scored 9.91, worse than the MSE variant at the same size (section 3.4). Quality uses the first 2,048 tokens of the WikiText-2 test set, fed in 128-token chunks so every chunk reads the compressed cache. The needle haystack is WikiText-2 text; most misses returned part of the code (for example `7319` or `ALPHA-42`). Decoding with a 4k-token context ran at 26.3 tokens per second with the FP16 cache, 10.2 with TurboQuant 4-bit and 6.5 with TurboQuant 2.5-bit.
 
-Three things to take from it:
+Four things to take from it:
 
 1. **Memory is exact and matches the bit counts above:** 3.9x smaller at 4 bits, 6.4x at 2.5 bits, 7.5x at 2 bits.
-2. **At the same size, TurboQuant drifts less than INT-*b*.** TurboQuant 3-bit (197 MB) has a KL six times lower than INT2 (189 MB), and only INT2 lost the needle. TurboQuant 3.5-bit beats INT3 while using fewer bits.
-3. **The reference code is slower than FP16**, as expected (section 5.3).
-
-> **Caveat on the quality numbers.** In this run WikiText-2 did not load (the bare `wikitext` dataset id no longer resolves), so the quality section and the needle haystack used one sentence repeated. Perplexity was therefore close to 1 for every configuration and is not reported; KL and top-1 are still a fair ranking of the caches, and the needle test was an easy one. The notebook now loads `Salesforce/wikitext`; re-running sections 3 and 4 replaces these numbers with real-text ones.
+2. **At 3.5 bits and above, TurboQuant stays within 3% of FP16 perplexity** (5.81 and 5.86 against 5.71) and finds every needle.
+3. **At the same size, TurboQuant beats INT-*b* by a wide margin.** TurboQuant 3-bit (197 MB) keeps perplexity at 6.10 where INT2 (189 MB) reaches 17.20 and finds the needle 3 times in 9. TurboQuant 3.5-bit beats INT3 (5.86 against 6.14) with fewer bits. At 4 bits INT4 is as good, but it needs 5 bits per channel.
+4. **Below 3 bits this reference loses quality:** perplexity rises by 29% at 2.5 bits and 64% at 2 bits, and the needle starts to slip. The paper reports 2.5 bits as nearly neutral on LongBench, a task average that is more forgiving than next-token perplexity. And the reference code is slower than FP16, as expected (section 5.3).
 
 **What to look for when it runs:**
 
@@ -882,7 +881,7 @@ TurboQuant keeps the cosine neighbours better than int8 or binary at each bit bu
 * **Aggressive settings cost accuracy on hard tasks.** vLLM reports drops of up to about 20 points on hard math and coding with the 3-bit variants. 4-bit is the safe default.
 * **Outlier splitting needs a calibration sample.** `MixedTurboQuant` picks outlier channels from the prefill. That is light, but it is not strictly data-oblivious.
 * **Beam search and cache cropping** are not supported by the demo's `TurboQuantCache`; use greedy or sampled decoding.
-* **Quality on real text still to re-run.** The saved LLM run scored KL and top-1 on a repeated sentence because WikiText-2 did not load; the notebook now loads it. Memory, needle, speed and the DBpedia search results are measured (sections 7.1 and 7.2).
+* **Below 3 bits, quality drops in the demo.** On WikiText-2, TurboQuant at 2.5 and 2 bits raised perplexity by 29% and 64%, against under 3% at 3.5 and 4 bits (section 7.1). Test the bit-width on your own task before going below 3 bits.
 * **Compression is not always the lever.** When the product's score is not a vector score, or the cost is the number of stored items or model calls, compressing vectors changes nothing. Two worked examples with real data are in section 8 and the [case study chapter](Case_Study_Provision_Similarity_EN.md).
 
 ---

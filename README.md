@@ -17,7 +17,7 @@ The two demo notebooks are edited and executed in Colab, so they are the source:
 
 ## Colab results (11 October 2026)
 
-**LLM demo, Llama-3.1-8B-Instruct on an A100.** KV cache for an 8,083-token prompt: 1,010 MB in FP16, 260 MB with TurboQuant 4-bit, 158 MB at 2.5 bits, 134 MB at 2 bits (INT4 with scales: 316 MB, INT2: 189 MB). Needle in a haystack (2k to 8k tokens, 3 depths): every TurboQuant setting found the code 9 times out of 9; INT2 missed it twice at 8k. Decode speed at 4k context: 27.0 tok/s FP16, 10.3 TurboQuant 4-bit, 6.6 TurboQuant 2.5-bit (reference code, no fused kernels). KL versus FP16: 0.0006 at 4 bits, 0.0060 at 3 bits, 0.0124 at 2.5 bits, against 0.0387 for INT2. That run scored quality on a repeated sentence because WikiText-2 did not load, so perplexity is not quoted; the notebook now loads `Salesforce/wikitext` and sections 3 and 4 should be re-run.
+**LLM demo, Llama-3.1-8B-Instruct on an A100, WikiText-2.** Perplexity (FP16 5.71): TurboQuant 4-bit 5.81, 3.5-bit 5.86, 3-bit 6.10, 2.5-bit 7.38, 2-bit 9.36; INT4 with scales 5.78, INT3 6.14, INT2 17.20. KV cache for an 8,084-token prompt: 1,010 MB in FP16, 260 MB with TurboQuant 4-bit, 158 MB at 2.5 bits, 134 MB at 2 bits (INT4: 316 MB, INT2: 189 MB). Needle in a haystack (2k to 8k tokens, 3 depths, 9 prompts): TurboQuant 4 and 3-bit 9 of 9, 2-bit 8, 2.5-bit 7, INT2 3. Decode speed at 4k context: 26.3 tok/s FP16, 10.2 TurboQuant 4-bit, 6.5 TurboQuant 2.5-bit (reference code, no fused kernels).
 
 **Vector demo, DBpedia OpenAI-1536 (100k + 1k), Colab CPU, 1 thread:**
 
