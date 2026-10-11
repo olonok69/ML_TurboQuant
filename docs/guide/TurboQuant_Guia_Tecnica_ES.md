@@ -599,7 +599,7 @@ El nombre viene de que el conjunto de vectores que PQ puede representar es el *p
 |---|---|---|
 | Codebook | Aprendido con k-means sobre tus datos, uno por subespacio | Fijado de antemano e igual para cualquier dato (Lloyd-Max para una campana, sección 3.2) |
 | Qué se redondea | Un grupo de números (un subvector) a la vez | Un número cada vez, tras una rotación aleatoria |
-| Antes de guardar el primer vector | Entrenar: 240 s para 100k vectores de 1536 dimensiones en el artículo; 926 s en nuestra demo (k-means con 25k vectores y después codificar) | Nada: 0,0013 s para indexar esos mismos 100k vectores en el artículo |
+| Antes de guardar el primer vector | Entrenar: 240 s para 100k vectores de 1536 dimensiones en el artículo; 817 s en nuestra demo (k-means con 25k vectores y después codificar) | Nada: 0,0013 s para indexar esos mismos 100k vectores en el artículo |
 | Cuando los datos cambian | Volver a entrenar y recodificar el índice | No cambia nada |
 | Recall@1@1 a 4 bits en la demo (sección 7.2) | 0,965 | 0,971 (turbovec) |
 | Puntuar una consulta | Tablas de consulta construidas para cada consulta; muy rápido con FastScan | Rotar la consulta una vez y puntuar contra los centroides (sección 3.3) |
@@ -684,7 +684,7 @@ El modelo no cambia. Cada capa tiene su propia rotación aleatoria (semilla = í
 | TurboQuant 2,5 bits | 158 MB | 7,38 | 0,246 | 81,3 % | 7 de 9 |
 | TurboQuant 2 bits | 134 MB | 9,36 | 0,475 | 74,1 % | 8 de 9 |
 
-INT3 + escalas (4,0 bits) obtuvo una perplejidad de 6,14, una KL de 0,069 y un top-1 del 90,2 %; TurboQuant_prod con claves de 3 bits obtuvo 9,91, peor que la variante MSE con el mismo tamaño (sección 3.4). La calidad usa los primeros 2.048 tokens del conjunto de test de WikiText-2, en bloques de 128 tokens para que cada bloque lea la caché comprimida. El pajar de la aguja es texto de WikiText-2; la mayoría de los fallos devolvieron parte del código (por ejemplo `7319` o `ALPHA-42`). Decodificando con un contexto de 4k tokens, la caché FP16 dio 26,3 tokens por segundo, TurboQuant a 4 bits 10,2 y TurboQuant a 2,5 bits 6,5.
+INT3 + escalas (4,0 bits) obtuvo una perplejidad de 6,14, una KL de 0,069 y un top-1 del 90,2 %; TurboQuant_prod con claves de 3 bits obtuvo 9,91, peor que la variante MSE con el mismo tamaño (sección 3.4). La calidad usa los primeros 2.048 tokens del conjunto de test de WikiText-2, en bloques de 128 tokens para que cada bloque lea la caché comprimida. El pajar de la aguja es texto de WikiText-2; la mayoría de los fallos devolvieron parte del código (por ejemplo `7319` o `ALPHA-42`). Decodificando con un contexto de 4k tokens, la caché FP16 dio 26,9 tokens por segundo, TurboQuant a 4 bits 10,4 y TurboQuant a 2,5 bits 6,6.
 
 Cuatro conclusiones:
 
@@ -738,19 +738,19 @@ Cuatro conclusiones:
 
 | Método | Bits | Más pequeño | Construcción (s) | QPS | R1@1 | 10@10 |
 |---|---|---|---|---|---|---|
-| **turbovec** | 4 | 7,8x | 2,4 | 126 | **0,971** | **0,967** |
-| **TurboQuant_mse (PyTorch)** | 4 | 8,0x | 34,8 | 85 | **0,966** | **0,961** |
-| FAISS RaBitQ | 4 | 7,8x | 45,5 | 48 | 0,965 | 0,965 |
-| FAISS PQ LUT256 | 4 | 8,0x | 926,3 | 6 | 0,965 | 0,960 |
-| FAISS PQ-FastScan | 4 | 8,0x | 49,3 | 180 | 0,959 | 0,954 |
-| FAISS SQ4 | 4 | 8,0x | 0,8 | 12 | 0,941 | 0,948 |
-| **turbovec** | 2 | 15,5x | 3,3 | 305 | **0,892** | **0,895** |
-| **TurboQuant_mse (PyTorch)** | 2 | 15,9x | 29,2 | 70 | **0,879** | **0,883** |
-| FAISS RaBitQ | 2 | 15,2x | 24,0 | 85 | 0,874 | 0,894 |
-| FAISS PQ LUT256 | 2 | 16,0x | 469,0 | 13 | 0,873 | 0,895 |
-| FAISS PQ-FastScan | 2 | 16,0x | 16,2 | 246 | 0,882 | 0,884 |
+| **turbovec** | 4 | 7,8x | 3,6 | 189 | **0,971** | **0,967** |
+| **TurboQuant_mse (PyTorch)** | 4 | 8,0x | 25,3 | 88 | **0,966** | **0,961** |
+| FAISS RaBitQ | 4 | 7,8x | 39,6 | 40 | 0,965 | 0,965 |
+| FAISS PQ LUT256 | 4 | 8,0x | 816,6 | 8 | 0,965 | 0,960 |
+| FAISS PQ-FastScan | 4 | 8,0x | 46,4 | 161 | 0,959 | 0,954 |
+| FAISS SQ4 | 4 | 8,0x | 0,8 | 13 | 0,941 | 0,948 |
+| **turbovec** | 2 | 15,5x | 3,0 | 357 | **0,892** | **0,895** |
+| **TurboQuant_mse (PyTorch)** | 2 | 15,9x | 22,9 | 113 | **0,879** | **0,883** |
+| FAISS RaBitQ | 2 | 15,2x | 21,3 | 87 | 0,874 | 0,894 |
+| FAISS PQ LUT256 | 2 | 16,0x | 397,5 | 17 | 0,873 | 0,895 |
+| FAISS PQ-FastScan | 2 | 16,0x | 16,1 | 352 | 0,882 | 0,884 |
 
-La búsqueda exacta en float32 alcanzó 180 QPS. La variante TurboQuant_prod obtuvo un R1@1 de 0,913 a 4 bits y de 0,766 a 2 bits, por debajo de la variante MSE, como predice la figura 3 del artículo para ordenar resultados.
+La búsqueda exacta en float32 alcanzó 155 QPS. La variante TurboQuant_prod obtuvo un R1@1 de 0,913 a 4 bits y de 0,766 a 2 bits, por debajo de la variante MSE, como predice la figura 3 del artículo para ordenar resultados.
 
 > **Cómo leer las columnas.** Las tres se calculan en `vector_search_demo.py` (sección 2) contra la respuesta exacta, que son los 100 vecinos más cercanos por producto interno según un `IndexFlatIP` de FAISS sin comprimir (los vectores están normalizados, así que equivale a la similitud coseno).
 >
@@ -762,8 +762,8 @@ La búsqueda exacta en float32 alcanzó 180 QPS. La variante TurboQuant_prod obt
 
 **Tres mensajes de esta ejecución:**
 
-1. **El mismo recall sin entrenamiento.** A 4 bits, turbovec sitúa el vecino más cercano real en primer lugar el 97,1 % de las veces, frente al 96,5 % de PQ y RaBitQ. PQ necesitó antes 926 segundos de k-means y codificación; turbovec, 2,4 segundos.
-2. **Ingesta online.** Se añadieron 100k vectores a turbovec en 1,9 s, en lotes de 1.000, sin ningún entrenamiento.
+1. **El mismo recall sin entrenamiento.** A 4 bits, turbovec sitúa el vecino más cercano real en primer lugar el 97,1 % de las veces, frente al 96,5 % de PQ y RaBitQ. PQ necesitó antes 817 segundos de k-means y codificación; turbovec, 3,6 segundos.
+2. **Ingesta online.** Se añadieron 100k vectores a turbovec en 1,8 s, en lotes de 1.000, sin ningún entrenamiento.
 3. **Resultados exactos tras un re-ranking barato.** Volver a puntuar el top 100 de turbovec con los vectores completos dio un Recall@1 = **1,000**.
 
 > **Una ejecución anterior con otros datos.** Antes de la ejecución en Colab, el mismo notebook se ejecutó en el sandbox donde se escribió el código, que no podía acceder al Hugging Face Hub, con embeddings de 384 dimensiones de texto real (corpus Reuters, Gutenberg y Brown; TF-IDF + SVD). Allí las diferencias fueron mucho mayores: a 4 bits turbovec llegó a un R1@1 de 0,944 frente a 0,818 de PQ LUT256 y 0,728 de PQ-FastScan. Con los datos de 1536 dimensiones del artículo, PQ entrenado alcanza a TurboQuant en recall, y la ventaja de TurboQuant es el entrenamiento que no necesita.

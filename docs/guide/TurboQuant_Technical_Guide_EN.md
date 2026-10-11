@@ -598,7 +598,7 @@ The name comes from the fact that the set of vectors PQ can represent is the Car
 |---|---|---|
 | Codebook | Learned with k-means on your data, one per sub-space | Fixed in advance and the same for all data (Lloyd-Max for a bell curve, section 3.2) |
 | What is rounded | A group of numbers (a sub-vector) at once | One number at a time, after a random rotation |
-| Before the first vector is stored | Training: 240 s for 100k vectors of 1536 dimensions in the paper; 926 s in our demo (k-means on 25k vectors, then encoding) | Nothing: 0.0013 s to index the same 100k vectors in the paper |
+| Before the first vector is stored | Training: 240 s for 100k vectors of 1536 dimensions in the paper; 817 s in our demo (k-means on 25k vectors, then encoding) | Nothing: 0.0013 s to index the same 100k vectors in the paper |
 | When the data drifts | Retrain and re-encode the index | Nothing changes |
 | Recall@1@1 at 4 bits in the demo (section 7.2) | 0.965 | 0.971 (turbovec) |
 | Scoring a query | Lookup tables built per query; very fast with FastScan | Rotate the query once, score against centroid values (section 3.3) |
@@ -683,7 +683,7 @@ Nothing in the model changes. Each layer gets its own random rotation (seed = la
 | TurboQuant 2.5-bit | 158 MB | 7.38 | 0.246 | 81.3% | 7 of 9 |
 | TurboQuant 2-bit | 134 MB | 9.36 | 0.475 | 74.1% | 8 of 9 |
 
-INT3 + scales (4.0 bits) scored perplexity 6.14, KL 0.069 and top-1 90.2%; TurboQuant_prod with 3-bit keys scored 9.91, worse than the MSE variant at the same size (section 3.4). Quality uses the first 2,048 tokens of the WikiText-2 test set, fed in 128-token chunks so every chunk reads the compressed cache. The needle haystack is WikiText-2 text; most misses returned part of the code (for example `7319` or `ALPHA-42`). Decoding with a 4k-token context ran at 26.3 tokens per second with the FP16 cache, 10.2 with TurboQuant 4-bit and 6.5 with TurboQuant 2.5-bit.
+INT3 + scales (4.0 bits) scored perplexity 6.14, KL 0.069 and top-1 90.2%; TurboQuant_prod with 3-bit keys scored 9.91, worse than the MSE variant at the same size (section 3.4). Quality uses the first 2,048 tokens of the WikiText-2 test set, fed in 128-token chunks so every chunk reads the compressed cache. The needle haystack is WikiText-2 text; most misses returned part of the code (for example `7319` or `ALPHA-42`). Decoding with a 4k-token context ran at 26.9 tokens per second with the FP16 cache, 10.4 with TurboQuant 4-bit and 6.6 with TurboQuant 2.5-bit.
 
 Four things to take from it:
 
@@ -737,19 +737,19 @@ Four things to take from it:
 
 | Method | Bits | Smaller | Build (s) | QPS | R1@1 | 10@10 |
 |---|---|---|---|---|---|---|
-| **turbovec** | 4 | 7.8x | 2.4 | 126 | **0.971** | **0.967** |
-| **TurboQuant_mse (PyTorch)** | 4 | 8.0x | 34.8 | 85 | **0.966** | **0.961** |
-| FAISS RaBitQ | 4 | 7.8x | 45.5 | 48 | 0.965 | 0.965 |
-| FAISS PQ LUT256 | 4 | 8.0x | 926.3 | 6 | 0.965 | 0.960 |
-| FAISS PQ-FastScan | 4 | 8.0x | 49.3 | 180 | 0.959 | 0.954 |
-| FAISS SQ4 | 4 | 8.0x | 0.8 | 12 | 0.941 | 0.948 |
-| **turbovec** | 2 | 15.5x | 3.3 | 305 | **0.892** | **0.895** |
-| **TurboQuant_mse (PyTorch)** | 2 | 15.9x | 29.2 | 70 | **0.879** | **0.883** |
-| FAISS RaBitQ | 2 | 15.2x | 24.0 | 85 | 0.874 | 0.894 |
-| FAISS PQ LUT256 | 2 | 16.0x | 469.0 | 13 | 0.873 | 0.895 |
-| FAISS PQ-FastScan | 2 | 16.0x | 16.2 | 246 | 0.882 | 0.884 |
+| **turbovec** | 4 | 7.8x | 3.6 | 189 | **0.971** | **0.967** |
+| **TurboQuant_mse (PyTorch)** | 4 | 8.0x | 25.3 | 88 | **0.966** | **0.961** |
+| FAISS RaBitQ | 4 | 7.8x | 39.6 | 40 | 0.965 | 0.965 |
+| FAISS PQ LUT256 | 4 | 8.0x | 816.6 | 8 | 0.965 | 0.960 |
+| FAISS PQ-FastScan | 4 | 8.0x | 46.4 | 161 | 0.959 | 0.954 |
+| FAISS SQ4 | 4 | 8.0x | 0.8 | 13 | 0.941 | 0.948 |
+| **turbovec** | 2 | 15.5x | 3.0 | 357 | **0.892** | **0.895** |
+| **TurboQuant_mse (PyTorch)** | 2 | 15.9x | 22.9 | 113 | **0.879** | **0.883** |
+| FAISS RaBitQ | 2 | 15.2x | 21.3 | 87 | 0.874 | 0.894 |
+| FAISS PQ LUT256 | 2 | 16.0x | 397.5 | 17 | 0.873 | 0.895 |
+| FAISS PQ-FastScan | 2 | 16.0x | 16.1 | 352 | 0.882 | 0.884 |
 
-Exact float32 search ran at 180 QPS. The TurboQuant_prod variant scored R1@1 0.913 at 4 bits and 0.766 at 2 bits, below the MSE variant, as the paper's Figure 3 predicts for ranking.
+Exact float32 search ran at 155 QPS. The TurboQuant_prod variant scored R1@1 0.913 at 4 bits and 0.766 at 2 bits, below the MSE variant, as the paper's Figure 3 predicts for ranking.
 
 > **How to read the columns.** All three are computed in `vector_search_demo.py` (section 2) against the exact answer, which is the top 100 neighbours by inner product from an uncompressed FAISS `IndexFlatIP` (the vectors are normalized, so this is cosine similarity).
 >
@@ -761,8 +761,8 @@ Exact float32 search ran at 180 QPS. The TurboQuant_prod variant scored R1@1 0.9
 
 **Three messages from this run:**
 
-1. **Same recall with no training.** At 4 bits turbovec ranks the true nearest neighbour first 97.1% of the time, against 96.5% for PQ and RaBitQ. PQ needed 926 seconds of k-means and encoding first; turbovec needed 2.4 seconds.
-2. **Online ingestion.** 100k vectors were streamed into turbovec in 1.9 s in batches of 1,000, with zero training.
+1. **Same recall with no training.** At 4 bits turbovec ranks the true nearest neighbour first 97.1% of the time, against 96.5% for PQ and RaBitQ. PQ needed 817 seconds of k-means and encoding first; turbovec needed 3.6 seconds.
+2. **Online ingestion.** 100k vectors were streamed into turbovec in 1.8 s in batches of 1,000, with zero training.
 3. **Exact results after a cheap re-rank.** Re-scoring turbovec's top 100 with the full vectors gave Recall@1 = **1.000**.
 
 > **An earlier run on other data.** Before the Colab run, the same notebook ran in the build sandbox, which could not reach the Hugging Face Hub, on 384-dimension embeddings of real text (Reuters, Gutenberg and Brown corpora; TF-IDF + SVD). There the gaps were much larger: at 4 bits turbovec reached R1@1 0.944 against 0.818 for PQ LUT256 and 0.728 for PQ-FastScan. On the paper's 1536-dimension data, trained PQ catches up on recall, and TurboQuant's advantage is the training it does not need.
