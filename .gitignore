@@ -12,15 +12,10 @@
 *.pywz
 *.pyzw  
 __pycache__/
+# local editor and assistant settings, never committed
 .cursorrules
 .cursor/
-.cursor/rules/
-.cursor/rules/rules.md
-.cursor/rules/rules.md
-.cursor/rules/rules.md
-.claude/*
-!.claude/settings.json
-.cursor/rules/rules.md
+.claude/
 # es_bench: provision data, vectors and results never go into git
 es_bench/results/
 *.npz
